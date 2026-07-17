@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Plataforma de Resultados, Ranking e TV Indoor</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
     :root {
       --bg: #080a0f;
@@ -6849,6 +6850,203 @@
       }
     }
 
+  
+
+    /* ===== EXPORTAÇÃO PROFISSIONAL POR SELEÇÃO DE QUADRO ===== */
+    .frame-export-panel {
+      margin: 0 0 18px;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: minmax(260px, 1.35fr) minmax(210px, 0.75fr) auto auto;
+      gap: 12px;
+      align-items: end;
+      border: 1px solid rgba(246, 196, 0, 0.22);
+      background:
+        linear-gradient(135deg, rgba(246, 196, 0, 0.09), rgba(96, 165, 250, 0.045)),
+        var(--panel);
+      box-shadow: 0 18px 55px rgba(0, 0, 0, 0.28);
+    }
+
+    .frame-export-intro {
+      min-width: 0;
+    }
+
+    .frame-export-kicker {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      margin-bottom: 8px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: #ffe680;
+      background: rgba(246, 196, 0, 0.12);
+      border: 1px solid rgba(246, 196, 0, 0.22);
+      font-size: 0.68rem;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .frame-export-intro h2 {
+      margin: 0;
+      font-size: 1.16rem;
+      letter-spacing: -0.025em;
+    }
+
+    .frame-export-intro p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .frame-export-field {
+      min-width: 0;
+    }
+
+    .frame-export-field select {
+      min-height: 48px;
+    }
+
+    .frame-export-panel button {
+      min-height: 48px;
+    }
+
+    .frame-export-select-button.active {
+      color: #111;
+      background: linear-gradient(135deg, var(--yellow), #fff0a8);
+      border-color: rgba(246, 196, 0, 0.55);
+      box-shadow: 0 0 0 4px rgba(246, 196, 0, 0.10);
+    }
+
+    .frame-export-status {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 38px;
+      padding: 9px 12px;
+      border-radius: 13px;
+      color: #d7deea;
+      background: rgba(0, 0, 0, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+
+    .frame-export-status::before {
+      content: "◉";
+      color: var(--yellow);
+      font-size: 0.72rem;
+    }
+
+    [data-export-frame-key] {
+      scroll-margin-top: 24px;
+    }
+
+    .export-frame-selected {
+      position: relative;
+      z-index: 3;
+      outline: 3px solid var(--yellow) !important;
+      outline-offset: 5px;
+      box-shadow: 0 0 0 9px rgba(246, 196, 0, 0.10), var(--shadow) !important;
+    }
+
+    body.export-selection-mode [data-export-frame-key] {
+      cursor: crosshair !important;
+      transition: outline 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease !important;
+    }
+
+    body.export-selection-mode [data-export-frame-key]:hover {
+      outline: 3px dashed var(--yellow) !important;
+      outline-offset: 5px;
+      box-shadow: 0 0 0 10px rgba(246, 196, 0, 0.11), var(--shadow) !important;
+      transform: translateY(-2px);
+    }
+
+    .export-capture-stage {
+      position: fixed;
+      left: -100000px;
+      top: 0;
+      z-index: -9999;
+      padding: 32px;
+      overflow: visible;
+      background:
+        radial-gradient(circle at 6% 0%, rgba(246,196,0,0.13), transparent 28%),
+        linear-gradient(135deg, #080a0f, #101722 56%, #080a0f);
+      color: var(--text);
+    }
+
+    .export-capture-stage .export-frame-selected {
+      outline: 0 !important;
+      box-shadow: none !important;
+    }
+
+    .export-capture-stage .export-clone,
+    .export-capture-stage .export-clone * {
+      animation: none !important;
+      transition: none !important;
+      caret-color: transparent !important;
+    }
+
+    .export-capture-stage .export-clone {
+      max-width: none !important;
+      margin: 0 !important;
+      transform: none !important;
+    }
+
+    .export-capture-stage .table-wrap,
+    .export-capture-stage .history-table-wrap,
+    .export-capture-stage .management-table-wrap,
+    .export-capture-stage .check-list,
+    .export-capture-stage .status-list,
+    .export-capture-stage .tv-table-container {
+      max-height: none !important;
+      height: auto !important;
+      overflow: visible !important;
+    }
+
+    .export-capture-stage table,
+    .export-capture-stage .management-table,
+    .export-capture-stage .management-table.clients,
+    .export-capture-stage .history-table-wrap table {
+      width: 100% !important;
+      min-width: 0 !important;
+      table-layout: auto !important;
+    }
+
+    .export-capture-stage th {
+      position: static !important;
+    }
+
+    .export-capture-stage button,
+    .export-capture-stage .seller-actions,
+    .export-capture-stage .history-hero-actions,
+    .export-capture-stage .management-actions,
+    .export-capture-stage .tv-control-actions,
+    .export-capture-stage .photo-manager,
+    .export-capture-stage input[type="file"] {
+      display: none !important;
+    }
+
+    .export-capture-stage .management-grid,
+    .export-capture-stage .history-grid-two {
+      grid-template-columns: 1fr !important;
+    }
+
+    @media (max-width: 1050px) {
+      .frame-export-panel {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .frame-export-panel {
+        grid-template-columns: 1fr;
+      }
+      .frame-export-status { grid-column: 1; }
+    }
+
   </style>
 </head>
 <body>
@@ -6917,6 +7115,56 @@
       <button class="tab-btn" data-tab="analytics" type="button">Análises Gerenciais</button>
       <button class="tab-btn" data-tab="tv" type="button">TV Indoor</button>
     </nav>
+
+    <section class="card frame-export-panel" id="frameExportPanel" aria-labelledby="frameExportTitle">
+      <div class="frame-export-intro">
+        <span class="frame-export-kicker">Exportação em imagem</span>
+        <h2 id="frameExportTitle">Escolha exatamente qual quadro deseja extrair</h2>
+        <p>Selecione pela lista ou ative a seleção visual e clique diretamente em um quadro do painel.</p>
+      </div>
+
+      <label class="frame-export-field">
+        Quadro para exportar
+        <select id="frameExportSelect">
+          <optgroup label="Visão geral">
+            <option value="results-summary">Indicadores gerais</option>
+            <option value="results-table">Resultado consolidado</option>
+          </optgroup>
+          <optgroup label="Campanha de vendas">
+            <option value="campaign-hero">Resumo e progresso da campanha</option>
+            <option value="ranking-summary">Indicadores do ranking</option>
+            <option value="podium">Pódio da campanha</option>
+            <option value="ranking-cards">Cards dos vendedores</option>
+            <option value="ranking-table">Tabela completa do ranking</option>
+          </optgroup>
+          <optgroup label="Crescimento Hengst">
+            <option value="history-hero">Resumo do crescimento</option>
+            <option value="history-kpis">Indicadores de crescimento</option>
+            <option value="history-chart">Crescimento por vendedor</option>
+            <option value="history-months">Comparativo mensal</option>
+            <option value="history-branch-table">Crescimento por filial</option>
+            <option value="history-seller-table">Crescimento por vendedor — tabela</option>
+            <option value="history-insights">Leitura automática</option>
+          </optgroup>
+          <optgroup label="Análises gerenciais">
+            <option value="analytics-hero">Resumo das análises</option>
+            <option value="analytics-kpis">Indicadores gerenciais</option>
+            <option value="analytics-leaders">Destaques gerenciais</option>
+            <option value="analytics-branch">Ranking por filial</option>
+            <option value="analytics-client">Ranking por cliente</option>
+          </optgroup>
+          <optgroup label="TV Indoor">
+            <option value="tv-stage">Quadro atual da TV Indoor</option>
+          </optgroup>
+        </select>
+      </label>
+
+      <button class="secondary frame-export-select-button" id="frameExportPickBtn" type="button">Selecionar na tela</button>
+      <button id="frameExportPngBtn" type="button">Exportar quadro PNG</button>
+
+      <div class="frame-export-status" id="frameExportStatus">Indicadores gerais selecionado. O quadro será expandido automaticamente antes da exportação.</div>
+    </section>
+
 
     <section id="tab-results" class="tab-panel active">
       <section class="grid">
@@ -11311,6 +11559,313 @@
         toggleTVPause();
       }
     });
+
+
+
+    /* ===== EXPORTAÇÃO POR SELEÇÃO DE QUADRO ===== */
+    const frameExportSelect = document.getElementById('frameExportSelect');
+    const frameExportPickBtn = document.getElementById('frameExportPickBtn');
+    const frameExportPngBtn = document.getElementById('frameExportPngBtn');
+    const frameExportStatus = document.getElementById('frameExportStatus');
+    let frameSelectionMode = false;
+    let selectedExportFrameKey = frameExportSelect?.value || 'results-summary';
+
+    const EXPORT_FRAME_REGISTRY = {
+      'results-summary': {
+        label: 'Indicadores gerais',
+        tab: 'results',
+        resolve: () => document.querySelector('#tab-results .stats')
+      },
+      'results-table': {
+        label: 'Resultado consolidado',
+        tab: 'results',
+        resolve: () => resultBody?.closest('.table-card')
+      },
+      'campaign-hero': {
+        label: 'Resumo e progresso da campanha',
+        tab: 'ranking',
+        resolve: () => document.querySelector('#tab-ranking .campaign-hero')
+      },
+      'ranking-summary': {
+        label: 'Indicadores do ranking',
+        tab: 'ranking',
+        resolve: () => document.querySelector('#tab-ranking .ranking-stats')
+      },
+      'podium': {
+        label: 'Pódio da campanha',
+        tab: 'ranking',
+        resolve: () => podium?.closest('.podium-card')
+      },
+      'ranking-cards': {
+        label: 'Cards dos vendedores',
+        tab: 'ranking',
+        resolve: () => rankingCards
+      },
+      'ranking-table': {
+        label: 'Tabela completa do ranking',
+        tab: 'ranking',
+        resolve: () => rankingBody?.closest('.table-card')
+      },
+      'history-hero': {
+        label: 'Resumo do crescimento',
+        tab: 'history',
+        resolve: () => document.querySelector('#tab-history .history-hero')
+      },
+      'history-kpis': {
+        label: 'Indicadores de crescimento',
+        tab: 'history',
+        resolve: () => document.querySelector('#tab-history .history-kpis')
+      },
+      'history-chart': {
+        label: 'Crescimento por vendedor',
+        tab: 'history',
+        resolve: () => document.querySelector('#tab-history .history-chart-card')
+      },
+      'history-months': {
+        label: 'Comparativo mensal',
+        tab: 'history',
+        resolve: () => document.getElementById('historyMonthCards')
+      },
+      'history-branch-table': {
+        label: 'Crescimento por filial',
+        tab: 'history',
+        resolve: () => document.getElementById('historyBranchBody')?.closest('.history-table-card')
+      },
+      'history-seller-table': {
+        label: 'Crescimento por vendedor — tabela',
+        tab: 'history',
+        resolve: () => document.getElementById('historySellerBody')?.closest('.history-table-card')
+      },
+      'history-insights': {
+        label: 'Leitura automática',
+        tab: 'history',
+        resolve: () => document.querySelector('#tab-history .history-insights')
+      },
+      'analytics-hero': {
+        label: 'Resumo das análises',
+        tab: 'analytics',
+        resolve: () => document.querySelector('#tab-analytics .management-hero')
+      },
+      'analytics-kpis': {
+        label: 'Indicadores gerenciais',
+        tab: 'analytics',
+        resolve: () => document.querySelector('#tab-analytics .management-kpis')
+      },
+      'analytics-leaders': {
+        label: 'Destaques gerenciais',
+        tab: 'analytics',
+        resolve: () => document.querySelector('#tab-analytics .management-leaders')
+      },
+      'analytics-branch': {
+        label: 'Ranking por filial',
+        tab: 'analytics',
+        resolve: () => branchTableWrap?.closest('.management-table-card')
+      },
+      'analytics-client': {
+        label: 'Ranking por cliente',
+        tab: 'analytics',
+        resolve: () => clientTableWrap?.closest('.management-table-card')
+      },
+      'tv-stage': {
+        label: 'Quadro atual da TV Indoor',
+        tab: 'tv',
+        resolve: () => tvStage
+      }
+    };
+
+    function getExportFrameConfig(key = selectedExportFrameKey) {
+      return EXPORT_FRAME_REGISTRY[key] || EXPORT_FRAME_REGISTRY['results-summary'];
+    }
+
+    function registerExportFrames() {
+      Object.entries(EXPORT_FRAME_REGISTRY).forEach(([key, config]) => {
+        const element = config.resolve();
+        if (!element) return;
+        element.dataset.exportFrameKey = key;
+        element.dataset.exportFrameLabel = config.label;
+      });
+    }
+
+    function clearExportFrameHighlight() {
+      document.querySelectorAll('.export-frame-selected').forEach(element => element.classList.remove('export-frame-selected'));
+    }
+
+    function updateFrameExportStatus(message) {
+      if (frameExportStatus) frameExportStatus.textContent = message;
+    }
+
+    function waitForFrame(ms = 260) {
+      return new Promise(resolve => window.setTimeout(resolve, ms));
+    }
+
+    async function focusExportFrame(key, options = {}) {
+      const config = getExportFrameConfig(key);
+      selectedExportFrameKey = key;
+      if (frameExportSelect && frameExportSelect.value !== key) frameExportSelect.value = key;
+
+      const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+      if (activeTab !== config.tab) {
+        setActiveTab(config.tab);
+        await waitForFrame(config.tab === 'history' || config.tab === 'analytics' ? 520 : 320);
+      }
+
+      registerExportFrames();
+      clearExportFrameHighlight();
+      const element = config.resolve();
+      if (!element) {
+        updateFrameExportStatus(`O quadro “${config.label}” ainda não está disponível.`);
+        return null;
+      }
+
+      element.classList.add('export-frame-selected');
+      if (options.scroll !== false) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }
+      updateFrameExportStatus(`${config.label} selecionado. A imagem incluirá todo o conteúdo interno, mesmo quando houver rolagem no quadro.`);
+      return element;
+    }
+
+    function setFrameSelectionMode(active) {
+      frameSelectionMode = Boolean(active);
+      document.body.classList.toggle('export-selection-mode', frameSelectionMode);
+      frameExportPickBtn?.classList.toggle('active', frameSelectionMode);
+      if (frameExportPickBtn) frameExportPickBtn.textContent = frameSelectionMode ? 'Clique em um quadro…' : 'Selecionar na tela';
+      updateFrameExportStatus(frameSelectionMode
+        ? 'Modo de seleção ativo: passe o mouse e clique no quadro que deseja exportar.'
+        : `${getExportFrameConfig().label} selecionado. Clique em “Exportar quadro PNG”.`);
+    }
+
+    function sanitizeExportFilename(value) {
+      return String(value || 'quadro')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80) || 'quadro';
+    }
+
+    function prepareExportClone(source, width) {
+      const clone = source.cloneNode(true);
+      clone.classList.remove('export-frame-selected');
+      clone.classList.add('export-clone');
+      clone.removeAttribute('id');
+      clone.style.width = `${width}px`;
+      clone.style.maxWidth = 'none';
+      clone.style.height = 'auto';
+      clone.style.minHeight = '0';
+      clone.style.overflow = 'visible';
+
+      clone.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
+      clone.querySelectorAll('button, input[type="file"]').forEach(element => element.remove());
+      clone.querySelectorAll('.seller-actions, .history-hero-actions, .management-actions, .tv-control-actions, .photo-manager').forEach(element => element.remove());
+      clone.querySelectorAll('.table-wrap, .history-table-wrap, .management-table-wrap, .tv-table-container').forEach(element => {
+        element.style.maxHeight = 'none';
+        element.style.height = 'auto';
+        element.style.overflow = 'visible';
+      });
+      clone.querySelectorAll('table').forEach(table => {
+        table.style.width = '100%';
+        table.style.minWidth = '0';
+        table.style.tableLayout = 'auto';
+      });
+      clone.querySelectorAll('th').forEach(cell => {
+        cell.style.position = 'static';
+      });
+      return clone;
+    }
+
+    async function exportSelectedFramePNG() {
+      if (typeof window.html2canvas !== 'function') {
+        showToast('Exportação indisponível', 'A biblioteca de imagem ainda não foi carregada. Recarregue a página e tente novamente.');
+        return;
+      }
+
+      const config = getExportFrameConfig();
+      const source = await focusExportFrame(selectedExportFrameKey, { scroll: false });
+      if (!source) return;
+
+      setFrameSelectionMode(false);
+      setBusy(true, 'Exportando quadro', `Preparando “${config.label}” em alta resolução...`, 52);
+      await waitForFrame(180);
+
+      const sourceRect = source.getBoundingClientRect();
+      const naturalWidth = Math.max(source.scrollWidth || 0, sourceRect.width || 0);
+      const captureWidth = selectedExportFrameKey === 'tv-stage'
+        ? 1600
+        : Math.max(1080, Math.min(1700, Math.round(naturalWidth || 1400)));
+
+      const stage = document.createElement('div');
+      stage.className = 'export-capture-stage';
+      stage.style.width = `${captureWidth + 64}px`;
+      const clone = prepareExportClone(source, captureWidth);
+      stage.appendChild(clone);
+      document.body.appendChild(stage);
+
+      try {
+        await waitForFrame(220);
+        const captureHeight = Math.max(stage.scrollHeight, stage.getBoundingClientRect().height);
+        const scale = captureHeight > 6500 ? 1.15 : captureHeight > 4200 ? 1.35 : captureHeight > 2800 ? 1.6 : 2;
+        const canvas = await window.html2canvas(stage, {
+          backgroundColor: '#080a0f',
+          scale,
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          imageTimeout: 15000,
+          windowWidth: captureWidth + 64,
+          width: stage.scrollWidth,
+          height: stage.scrollHeight,
+          scrollX: 0,
+          scrollY: 0
+        });
+
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png', 1);
+        link.download = `${sanitizeExportFilename(config.label)}-${new Date().toISOString().slice(0, 10)}.png`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        markUpdated(`Quadro “${config.label}” exportado em PNG.`);
+        showToast('Quadro exportado', `${config.label} foi gerado em PNG sem limitar o conteúdo pela rolagem interna.`);
+      } catch (error) {
+        console.error(error);
+        setBusy(false, 'Falha na exportação', 'Não foi possível gerar a imagem.', 0);
+        showToast('Falha na exportação', 'O quadro não pôde ser convertido em imagem. Tente novamente após recarregar a página.');
+      } finally {
+        stage.remove();
+      }
+    }
+
+    frameExportSelect?.addEventListener('change', event => {
+      setFrameSelectionMode(false);
+      focusExportFrame(event.target.value);
+    });
+
+    frameExportPickBtn?.addEventListener('click', () => {
+      setFrameSelectionMode(!frameSelectionMode);
+    });
+
+    frameExportPngBtn?.addEventListener('click', exportSelectedFramePNG);
+
+    document.addEventListener('click', event => {
+      if (!frameSelectionMode) return;
+      const frame = event.target.closest('[data-export-frame-key]');
+      if (!frame || event.target.closest('#frameExportPanel')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const key = frame.dataset.exportFrameKey;
+      setFrameSelectionMode(false);
+      focusExportFrame(key);
+    }, true);
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && frameSelectionMode) setFrameSelectionMode(false);
+    });
+
+    registerExportFrames();
+    focusExportFrame(selectedExportFrameKey, { scroll: false });
 
     tabButtons.forEach(button => button.addEventListener('click', () => setActiveTab(button.dataset.tab)));
 
