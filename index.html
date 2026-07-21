@@ -5955,6 +5955,59 @@
       box-shadow: 0 0 12px rgba(246,196,0,0.24);
     }
 
+    /* Mantém os quadros proporcionais e elimina o espaço vazio excessivo em telas 16:9. */
+    .tv-card-grid {
+      align-self: center;
+      align-items: stretch;
+    }
+
+    .tv-seller-card {
+      width: 100%;
+      min-height: clamp(360px, 44vh, 500px);
+      max-height: 520px;
+      padding: clamp(16px, 1.25vw, 24px);
+      gap: clamp(11px, 1vw, 16px);
+    }
+
+    .tv-card-person {
+      min-height: 88px;
+    }
+
+    .tv-card-avatar {
+      width: clamp(76px, 5vw, 96px) !important;
+      height: clamp(76px, 5vw, 96px) !important;
+      flex-basis: clamp(76px, 5vw, 96px);
+    }
+
+    .tv-card-person h3 {
+      font-size: clamp(1rem, 1.15vw, 1.4rem);
+    }
+
+    .tv-card-person p {
+      font-size: clamp(.7rem, .78vw, .92rem);
+    }
+
+    .tv-card-metric,
+    .tv-card-metric.is-growth {
+      min-height: clamp(72px, 7vh, 88px);
+      padding: clamp(11px, .9vw, 15px);
+    }
+
+    .tv-card-metric small {
+      font-size: clamp(.56rem, .62vw, .72rem);
+    }
+
+    .tv-card-metric b,
+    .tv-card-metric b.history-positive,
+    .tv-card-metric b.history-negative,
+    .tv-card-metric b.history-neutral {
+      font-size: clamp(.92rem, 1.08vw, 1.28rem);
+    }
+
+    .tv-card-progress {
+      margin-top: clamp(6px, 1vh, 14px);
+    }
+
     .tv-table .tv-col-position { width: 6%; }
     .tv-table .tv-col-seller { width: 22%; }
     .tv-table .tv-col-branch { width: 11%; }
