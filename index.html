@@ -7280,7 +7280,7 @@
       </label>
 
       <button class="secondary frame-export-select-button" id="frameExportPickBtn" type="button">Selecionar na tela</button>
-      <button id="frameExportPngBtn" type="button">Exportar quadro PNG</button>
+      <button id="frameExportWebpBtn" type="button">Exportar quadro WebP</button>
 
       <div class="frame-export-status" id="frameExportStatus">Indicadores gerais selecionado. O quadro será expandido automaticamente antes da exportação.</div>
     </section>
@@ -7599,7 +7599,7 @@
           <button id="rankingApplyBtn" type="button">Atualizar</button>
 
           <div class="ranking-export-actions" aria-label="Exportações do ranking">
-            <button class="secondary" id="exportPodiumBtn" type="button" disabled>Exportar TOP 5 PNG</button>
+            <button class="secondary" id="exportPodiumBtn" type="button" disabled>Exportar TOP 5 WebP</button>
             <button class="secondary" id="exportRankingValueBtn" type="button" disabled>Lista por Valor</button>
             <button class="secondary" id="exportRankingQtyBtn" type="button" disabled>Lista por Quantidade</button>
             <div class="export-note">As exportações respeitam os filtros marcados. A imagem sai em TOP 5 com textos em linhas completas; as listas CSV saem do maior para o menor por valor ou quantidade.</div>
@@ -11444,16 +11444,16 @@
       ctx.stroke();
     }
 
-    function downloadCanvasPNG(canvas, filename) {
+    function downloadCanvasWebP(canvas, filename) {
       const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
+      link.href = canvas.toDataURL('image/webp', 0.92);
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
 
-    async function exportPodiumPNG() {
+    async function exportPodiumWebP() {
       const rows = getRankingRowsForExport(rankingSortSelect.value).slice(0, 5);
       if (!rows.length) {
         showToast('Nada para exportar', 'Não há ranking no filtro atual.');
@@ -11466,7 +11466,7 @@
           ? 'ordem alfabética'
           : 'maior valor de vendas';
 
-      setBusy(true, 'Exportando TOP 5', 'Gerando imagem PNG do ranking sem cortar textos...', 55);
+      setBusy(true, 'Exportando TOP 5', 'Gerando imagem WebP do ranking sem cortar textos...', 55);
       await nextPaint();
 
       const canvas = document.createElement('canvas');
@@ -11588,9 +11588,9 @@
       ctx.font = '900 20px Arial';
       ctx.fillText('Exportação em imagem otimizada para não cortar nomes, marcas e valores.', 800, 1945);
 
-      downloadCanvasPNG(canvas, `ranking-top-5-campanha-vendas-${new Date().toISOString().slice(0, 10)}.png`);
-      markUpdated('Ranking TOP 5 exportado em PNG.');
-      showToast('TOP 5 exportado', 'A imagem PNG do ranking TOP 5 foi gerada sem corte de texto.');
+      downloadCanvasWebP(canvas, `ranking-top-5-campanha-vendas-${new Date().toISOString().slice(0, 10)}.webp`);
+      markUpdated('Ranking TOP 5 exportado em WebP.');
+      showToast('TOP 5 exportado', 'A imagem WebP do ranking TOP 5 foi gerada sem corte de texto.');
     }
 
     function exportRankingByValueCSV() {
@@ -11676,7 +11676,7 @@
     applyBtn.addEventListener('click', () => refreshResultsView());
     exportBtn.addEventListener('click', exportCSV);
     exportRankingBtn.addEventListener('click', exportRankingCSV);
-    if (exportPodiumBtn) exportPodiumBtn.addEventListener('click', exportPodiumPNG);
+    if (exportPodiumBtn) exportPodiumBtn.addEventListener('click', exportPodiumWebP);
     if (exportRankingValueBtn) exportRankingValueBtn.addEventListener('click', exportRankingByValueCSV);
     if (exportRankingQtyBtn) exportRankingQtyBtn.addEventListener('click', exportRankingByQtyCSV);
     clearBtn.addEventListener('click', clearData);
@@ -11842,7 +11842,7 @@
     /* ===== EXPORTAÇÃO POR SELEÇÃO DE QUADRO ===== */
     const frameExportSelect = document.getElementById('frameExportSelect');
     const frameExportPickBtn = document.getElementById('frameExportPickBtn');
-    const frameExportPngBtn = document.getElementById('frameExportPngBtn');
+    const frameExportWebpBtn = document.getElementById('frameExportWebpBtn');
     const frameExportStatus = document.getElementById('frameExportStatus');
     let frameSelectionMode = false;
     let selectedExportFrameKey = frameExportSelect?.value || 'results-summary';
@@ -12009,7 +12009,7 @@
       if (frameExportPickBtn) frameExportPickBtn.textContent = frameSelectionMode ? 'Clique em um quadro…' : 'Selecionar na tela';
       updateFrameExportStatus(frameSelectionMode
         ? 'Modo de seleção ativo: passe o mouse e clique no quadro que deseja exportar.'
-        : `${getExportFrameConfig().label} selecionado. Clique em “Exportar quadro PNG”.`);
+        : `${getExportFrameConfig().label} selecionado. Clique em “Exportar quadro WebP”.`);
     }
 
     function sanitizeExportFilename(value) {
@@ -12052,7 +12052,7 @@
       return clone;
     }
 
-    async function exportSelectedFramePNG() {
+    async function exportSelectedFrameWebP() {
       if (typeof window.html2canvas !== 'function') {
         showToast('Exportação indisponível', 'A biblioteca de imagem ainda não foi carregada. Recarregue a página e tente novamente.');
         return;
@@ -12098,14 +12098,14 @@
         });
 
         const link = document.createElement('a');
-        link.href = canvas.toDataURL('image/png', 1);
-        link.download = `${sanitizeExportFilename(config.label)}-${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = canvas.toDataURL('image/webp', 0.92);
+        link.download = `${sanitizeExportFilename(config.label)}-${new Date().toISOString().slice(0, 10)}.webp`;
         document.body.appendChild(link);
         link.click();
         link.remove();
 
-        markUpdated(`Quadro “${config.label}” exportado em PNG.`);
-        showToast('Quadro exportado', `${config.label} foi gerado em PNG sem limitar o conteúdo pela rolagem interna.`);
+        markUpdated(`Quadro “${config.label}” exportado em WebP.`);
+        showToast('Quadro exportado', `${config.label} foi gerado em WebP sem limitar o conteúdo pela rolagem interna.`);
       } catch (error) {
         console.error(error);
         setBusy(false, 'Falha na exportação', 'Não foi possível gerar a imagem.', 0);
@@ -12124,7 +12124,7 @@
       setFrameSelectionMode(!frameSelectionMode);
     });
 
-    frameExportPngBtn?.addEventListener('click', exportSelectedFramePNG);
+    frameExportWebpBtn?.addEventListener('click', exportSelectedFrameWebP);
 
     document.addEventListener('click', event => {
       if (!frameSelectionMode) return;

@@ -7231,7 +7231,7 @@
           <button id="rankingApplyBtn" type="button">Atualizar</button>
 
           <div class="ranking-export-actions" aria-label="Exportações do ranking">
-            <button class="secondary" id="exportPodiumBtn" type="button" disabled>Exportar TOP 5 PNG</button>
+            <button class="secondary" id="exportPodiumBtn" type="button" disabled>Exportar TOP 5 WebP</button>
             <button class="secondary" id="exportRankingValueBtn" type="button" disabled>Lista por Valor</button>
             <button class="secondary" id="exportRankingQtyBtn" type="button" disabled>Lista por Quantidade</button>
             <div class="export-note">As exportações respeitam os filtros marcados. A imagem sai em TOP 5 com textos em linhas completas; as listas CSV saem do maior para o menor por valor ou quantidade.</div>
@@ -10920,16 +10920,16 @@
       ctx.stroke();
     }
 
-    function downloadCanvasPNG(canvas, filename) {
+    function downloadCanvasWebP(canvas, filename) {
       const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
+      link.href = canvas.toDataURL('image/webp', 0.92);
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
 
-    async function exportPodiumPNG() {
+    async function exportPodiumWebP() {
       const rows = getRankingRowsForExport(rankingSortSelect.value).slice(0, 5);
       if (!rows.length) {
         showToast('Nada para exportar', 'Não há ranking no filtro atual.');
@@ -10942,7 +10942,7 @@
           ? 'ordem alfabética'
           : 'maior valor de vendas';
 
-      setBusy(true, 'Exportando TOP 5', 'Gerando imagem PNG do ranking sem cortar textos...', 55);
+      setBusy(true, 'Exportando TOP 5', 'Gerando imagem WebP do ranking sem cortar textos...', 55);
       await nextPaint();
 
       const canvas = document.createElement('canvas');
@@ -11064,9 +11064,9 @@
       ctx.font = '900 20px Arial';
       ctx.fillText('Exportação em imagem otimizada para não cortar nomes, marcas e valores.', 800, 1945);
 
-      downloadCanvasPNG(canvas, `ranking-top-5-campanha-vendas-${new Date().toISOString().slice(0, 10)}.png`);
-      markUpdated('Ranking TOP 5 exportado em PNG.');
-      showToast('TOP 5 exportado', 'A imagem PNG do ranking TOP 5 foi gerada sem corte de texto.');
+      downloadCanvasWebP(canvas, `ranking-top-5-campanha-vendas-${new Date().toISOString().slice(0, 10)}.webp`);
+      markUpdated('Ranking TOP 5 exportado em WebP.');
+      showToast('TOP 5 exportado', 'A imagem WebP do ranking TOP 5 foi gerada sem corte de texto.');
     }
 
     function exportRankingByValueCSV() {
@@ -11151,7 +11151,7 @@
     applyBtn.addEventListener('click', () => refreshResultsView());
     exportBtn.addEventListener('click', exportCSV);
     exportRankingBtn.addEventListener('click', exportRankingCSV);
-    if (exportPodiumBtn) exportPodiumBtn.addEventListener('click', exportPodiumPNG);
+    if (exportPodiumBtn) exportPodiumBtn.addEventListener('click', exportPodiumWebP);
     if (exportRankingValueBtn) exportRankingValueBtn.addEventListener('click', exportRankingByValueCSV);
     if (exportRankingQtyBtn) exportRankingQtyBtn.addEventListener('click', exportRankingByQtyCSV);
     clearBtn.addEventListener('click', clearData);
