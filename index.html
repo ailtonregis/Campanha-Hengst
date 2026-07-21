@@ -8359,6 +8359,7 @@
 
           <div class="tv-control-actions">
             <button id="tvApplyBtn" type="button">Atualizar transmissão</button>
+            <button class="secondary" id="tvTestLastSaleBtn" type="button">🔔 Testar última venda</button>
             <button class="secondary" id="tvPrevBtn" type="button">◀ Anterior</button>
             <button class="secondary" id="tvPauseBtn" type="button">Pausar</button>
             <button class="secondary" id="tvNextBtn" type="button">Próxima ▶</button>
@@ -8626,6 +8627,7 @@
     const tvConfigLoginBtn = document.getElementById('tvConfigLoginBtn');
     const tvConfigAuthStatus = document.getElementById('tvConfigAuthStatus');
     const tvApplyBtn = document.getElementById('tvApplyBtn');
+    const tvTestLastSaleBtn = document.getElementById('tvTestLastSaleBtn');
     const tvPrevBtn = document.getElementById('tvPrevBtn');
     const tvPauseBtn = document.getElementById('tvPauseBtn');
     const tvNextBtn = document.getElementById('tvNextBtn');
@@ -8934,6 +8936,25 @@
       if (!Array.isArray(sales) || !sales.length || !document.body.classList.contains('mode-tv')) return;
       tvSaleQueue.push(...sales);
       showNextTVSaleAnnouncement();
+    }
+
+    function getLastTVSaleForTest() {
+      const selected = tvSettings.participants === null
+        ? null
+        : new Set(tvSettings.participants.map(normalizeText));
+      const row = [...getOfficialRows(rawRows)].reverse().find(item => {
+        const seller = canonicalSellerName(item.nome || '');
+        return normalizeText(item.marca) === 'hengst'
+          && (!selected || selected.has(normalizeText(seller)))
+          && (Number(item.valor || 0) > 0 || Number(item.quantidade || 0) > 0);
+      });
+      if (!row) return null;
+      return {
+        nome: canonicalSellerName(row.nome || 'Vendedor não identificado'),
+        filial: String(row.filial || '').trim(),
+        valorVenda: Math.max(0, Number(row.valor || 0)),
+        quantidadeVenda: Math.max(0, Number(row.quantidade || 0))
+      };
     }
 
     function applyCloudState(state) {
@@ -12229,6 +12250,17 @@
       showNextTVSaleAnnouncement();
       markUpdated('Transmissão da TV Indoor atualizada.');
       showToast('TV Indoor atualizada', `${tvSlideCount} cena(s) prontas para transmissão.`);
+    });
+    tvTestLastSaleBtn?.addEventListener('click', async () => {
+      const sale = getLastTVSaleForTest();
+      if (!sale) {
+        showToast('Nenhuma venda para testar', 'Não foi encontrada uma venda HENGST dos participantes selecionados.');
+        return;
+      }
+      await unlockTVAudio();
+      document.body.classList.remove('tv-config-open');
+      if (tvSettingsToggleBtn) tvSettingsToggleBtn.textContent = '⚙ Configurar TV';
+      queueTVSaleAnnouncements([sale]);
     });
     tvSelectAllParticipantsBtn?.addEventListener('click', () => setChecklistState(tvParticipantChecklist, true));
     tvClearParticipantsBtn?.addEventListener('click', () => setChecklistState(tvParticipantChecklist, false));
