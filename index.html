@@ -6283,6 +6283,53 @@
     .tv-slide[data-tv-scene="products"] .tv-table .tv-col-branch { width: 18%; }
     .tv-slide[data-tv-scene="products"] .tv-table .tv-col-number { width: 20.5%; }
 
+    /* TOP 13/14: todas as posições permanecem visíveis sem cortar a última linha. */
+    .tv-table.tv-table-ultra-dense th,
+    .tv-table.tv-table-ultra-dense td {
+      padding: clamp(4px, .38vh, 7px) clamp(9px, .62vw, 12px);
+      line-height: 1.08;
+    }
+
+    .tv-table.tv-table-ultra-dense th {
+      font-size: clamp(.61rem, .65vw, .76rem);
+    }
+
+    .tv-table.tv-table-ultra-dense td,
+    .tv-table.tv-table-ultra-dense td strong,
+    .tv-table.tv-table-ultra-dense td.tv-number,
+    .tv-table.tv-table-ultra-dense .tv-growth-pill {
+      font-size: clamp(.7rem, .76vw, .9rem);
+    }
+
+    .tv-table.tv-table-ultra-dense .tv-col-position,
+    .tv-table.tv-table-ultra-dense .tv-col-position strong,
+    .tv-table.tv-table-ultra-dense .tv-col-seller,
+    .tv-table.tv-table-ultra-dense .tv-col-seller strong {
+      white-space: nowrap;
+      overflow: visible;
+      text-overflow: clip;
+      word-break: normal;
+    }
+
+    .tv-table.tv-table-ultra-dense td.tv-col-goal strong {
+      font-size: clamp(.66rem, .72vw, .84rem);
+    }
+
+    .tv-table.tv-table-ultra-dense td.tv-col-goal small {
+      margin-top: 2px;
+      font-size: clamp(.55rem, .59vw, .7rem);
+    }
+
+    .tv-table.tv-table-ultra-dense .tv-goal-mini-track {
+      height: 5px;
+      margin-top: 3px;
+    }
+
+    .tv-table.tv-table-ultra-dense .tv-growth-pill {
+      min-width: clamp(76px, 5.2vw, 98px);
+      padding: 5px 8px;
+    }
+
     /* Ranking ampliado e distribuído para leitura em televisores Full HD. */
     .tv-table th,
     .tv-table td {
@@ -10304,6 +10351,7 @@
     function buildTVRankingSlide(rows, periodLabel) {
       const visibleRows = rows.slice(0, Math.min(tvSettings.rows, rows.length));
       const isDense = visibleRows.length > 8;
+      const isUltraDense = visibleRows.length > 12;
       const rowsHtml = visibleRows.length ? visibleRows.map((row, index) => {
         const growth = getSellerGrowth(row.nome, 'valor').monthlyGrowth;
         const goal = getSellerGoal(row.nome);
@@ -10331,7 +10379,7 @@
           <div class="tv-slide-inner">
             ${getTVSlideHeader('Classificação', `Ranking TOP ${tvSettings.rows}`, tvSettings.metric === 'quantidade' ? 'Ordenado pela maior quantidade vendida.' : 'Ordenado pelo maior valor vendido.', periodLabel)}
             <div class="tv-table-container">
-              <table class="tv-table${isDense ? ' tv-table-dense' : ''}">
+              <table class="tv-table${isDense ? ' tv-table-dense' : ''}${isUltraDense ? ' tv-table-ultra-dense' : ''}">
                 <thead><tr><th class="tv-col-position">Pos.</th><th class="tv-col-seller">Vendedor</th><th class="tv-col-branch">Filial</th><th class="tv-col-number">Qtd.</th><th class="tv-col-number">Valor</th><th class="tv-col-goal">Meta / progresso</th><th class="tv-col-growth">Crescimento</th></tr></thead>
                 <tbody>${rowsHtml}</tbody>
               </table>
@@ -10350,6 +10398,7 @@
         const bv = b.growthTV === null ? Number.NEGATIVE_INFINITY : b.growthTV;
         return bv - av || b.currentTV - a.currentTV;
       }).slice(0, tvSettings.rows);
+      const isUltraDense = growthRows.length > 12;
 
       const rowsHtml = growthRows.length ? growthRows.map((row, index) => `
         <tr>
@@ -10367,7 +10416,7 @@
           <div class="tv-slide-inner">
             ${getTVSlideHeader('Comparativo mensal', 'Crescimento Hengst', 'Crescimento mensal dos vendedores calculado com a base histórica, sem exibir a coluna de média.', periodLabel)}
             <div class="tv-table-container">
-              <table class="tv-table${growthRows.length > 8 ? ' tv-table-dense' : ''}">
+              <table class="tv-table${growthRows.length > 8 ? ' tv-table-dense' : ''}${isUltraDense ? ' tv-table-ultra-dense' : ''}">
                 <thead><tr><th class="tv-col-position">Pos.</th><th class="tv-col-seller">Vendedor</th><th class="tv-col-branch">Filial</th><th class="tv-col-number">Atual</th><th class="tv-col-number">Diferença</th><th class="tv-col-growth">Crescimento</th></tr></thead>
                 <tbody>${rowsHtml}</tbody>
               </table>
@@ -10380,6 +10429,7 @@
     function buildTVProductsSlide(periodLabel) {
       const sellerProductRows = getTVProductRows().slice(0, tvSettings.rows);
       const isDense = sellerProductRows.length > 8;
+      const isUltraDense = sellerProductRows.length > 12;
 
       const rowsHtml = sellerProductRows.length ? sellerProductRows.map((row, index) => `
         <tr>
@@ -10402,7 +10452,7 @@
               periodLabel
             )}
             <div class="tv-table-container">
-              <table class="tv-table${isDense ? ' tv-table-dense' : ''}">
+              <table class="tv-table${isDense ? ' tv-table-dense' : ''}${isUltraDense ? ' tv-table-ultra-dense' : ''}">
                 <thead>
                   <tr>
                     <th class="tv-col-position">Pos.</th>
