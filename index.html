@@ -8871,19 +8871,24 @@
 
     function playTVSaleSound() {
       if (!tvAudioContext || tvAudioContext.state !== 'running') return;
-      const now = tvAudioContext.currentTime;
-      [523.25, 659.25, 783.99].forEach((frequency, index) => {
+      const now = tvAudioContext.currentTime + .03;
+      const pulseDuration = .24;
+      const pulseGap = .08;
+      const frequencies = [880, 660, 880, 660, 988, 740, 988, 740, 1046, 784];
+      frequencies.forEach((frequency, index) => {
         const oscillator = tvAudioContext.createOscillator();
         const gain = tvAudioContext.createGain();
-        const start = now + index * .16;
-        oscillator.type = 'sine';
+        const start = now + index * (pulseDuration + pulseGap);
+        const end = start + pulseDuration;
+        oscillator.type = 'square';
         oscillator.frequency.setValueAtTime(frequency, start);
         gain.gain.setValueAtTime(.0001, start);
-        gain.gain.exponentialRampToValueAtTime(.22, start + .025);
-        gain.gain.exponentialRampToValueAtTime(.0001, start + .42);
+        gain.gain.exponentialRampToValueAtTime(.13, start + .018);
+        gain.gain.setValueAtTime(.13, end - .045);
+        gain.gain.exponentialRampToValueAtTime(.0001, end);
         oscillator.connect(gain).connect(tvAudioContext.destination);
         oscillator.start(start);
-        oscillator.stop(start + .45);
+        oscillator.stop(end + .01);
       });
     }
 
