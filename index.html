@@ -7142,7 +7142,7 @@
           <h1 id="loginTitle">Painel administrativo</h1>
           <p>Entre com seu usuário e senha para gerenciar resultados, metas, rankings e análises.</p>
           <label>Usuário<input id="previewUsername" type="text" value="admin" autocomplete="username" required></label>
-          <label>Senha<input id="previewPassword" type="password" value="preview" autocomplete="current-password" required></label>
+          <label>Senha<input id="previewPassword" type="password" autocomplete="current-password" required></label>
           <button class="login-submit" type="submit">Entrar na administração</button>
           <small class="preview-note">Acesso administrativo demonstrativo</small>
         </form>
@@ -8197,9 +8197,21 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    previewLoginForm.addEventListener('submit', event => {
+    previewLoginForm.addEventListener('submit', async event => {
       event.preventDefault();
-      openWorkspace('admin');
+      const submitButton = previewLoginForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      submitButton.textContent = 'Entrando...';
+      try {
+        await authenticateAdmin();
+        openWorkspace('admin');
+        if (!cloudStateExists) await saveCloudState();
+      } catch (error) {
+        showToast('Não foi possível entrar', error.message);
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Entrar na administração';
+      }
     });
     openPublicTvArea.addEventListener('click', () => openWorkspace('tv'));
     openAdminArea.addEventListener('click', () => openWorkspace('admin'));
@@ -8385,7 +8397,7 @@
       individualGoal: 0,
       prize: 'Defina uma premiação'
     });
-    let effectsEnabled = localStorage.getItem('vendasEffectsEnabled') !== 'false';
+    let effectsEnabled = loadLegacyValue('vendasEffectsEnabled', 'true') !== 'false';
     let lastCelebratedTopSeller = '';
 
     const DEFAULT_CARD_DISPLAY_SETTINGS = {
@@ -8487,20 +8499,123 @@
     const moneyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
     const numberFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 
+    let cloudCanWrite = false;
+    let cloudStateExists = false;
+    let cloudApplyingState = false;
+    let cloudSaveTimer = null;
+
+    function loadLegacyValue(key, fallback) {
+      try {
+        return localStorage.getItem(key) ?? fallback;
+      } catch (error) {
+        return fallback;
+      }
+    }
+
     function loadStoredObject(key, fallback) {
       try {
-        const stored = localStorage.getItem(key);
+        const stored = loadLegacyValue(key, '');
         return stored ? JSON.parse(stored) : fallback;
       } catch (error) {
         return fallback;
       }
     }
 
-    function storeObject(key, value) {
+    function storeObject() {
+      scheduleCloudSave();
+    }
+
+    function getCloudState() {
+      return { version: 1, rawRows, vendorPhotos, sellerGoals, campaignSettings, cardDisplaySettings, tvSettings, effectsEnabled };
+    }
+
+    function clearLegacyStorage() {
+      ['vendasRankingPhotos', 'vendasSellerIndividualGoals', 'vendasCampaignSettings',
+        'vendasEffectsEnabled', 'vendasCardDisplaySettings', 'vendasTVIndoorSettings']
+        .forEach(key => localStorage.removeItem(key));
+    }
+
+    function scheduleCloudSave(delay = 700) {
+      if (!cloudCanWrite || cloudApplyingState) return;
+      clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = setTimeout(() => saveCloudState().catch(error => {
+        console.error(error);
+        showToast('Falha ao salvar na nuvem', error.message);
+      }), delay);
+    }
+
+    async function authenticateAdmin() {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: document.getElementById('previewUsername').value,
+          password: document.getElementById('previewPassword').value
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Falha na autenticação administrativa.');
+      cloudCanWrite = true;
+    }
+
+    async function saveCloudState() {
+      if (!cloudCanWrite) return;
+      clearTimeout(cloudSaveTimer);
+      const response = await fetch('/api/state', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: getCloudState() })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.status === 401) cloudCanWrite = false;
+      if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os dados compartilhados.');
+      cloudStateExists = true;
+      clearLegacyStorage();
+      return result;
+    }
+
+    function applyCloudState(state) {
+      if (!state || typeof state !== 'object') return;
+      cloudApplyingState = true;
+      rawRows = Array.isArray(state.rawRows) ? state.rawRows : [];
+      rawRowKeys = new Set(rawRows.map(makeRowKey));
+      vendorPhotos = state.vendorPhotos && typeof state.vendorPhotos === 'object' ? state.vendorPhotos : {};
+      sellerGoals = state.sellerGoals && typeof state.sellerGoals === 'object' ? state.sellerGoals : {};
+      campaignSettings = state.campaignSettings && typeof state.campaignSettings === 'object' ? state.campaignSettings : campaignSettings;
+      cardDisplaySettings = normalizeCardDisplaySettings(state.cardDisplaySettings || DEFAULT_CARD_DISPLAY_SETTINGS);
+      tvSettings = normalizeTVSettings(state.tvSettings || DEFAULT_TV_SETTINGS);
+      effectsEnabled = state.effectsEnabled !== false;
+      syncCardDisplayControls();
+      syncTVControls();
+      updateEffectsState();
+      updateAllFilterOptions();
+      updateSellerPhotoSelect();
+      loadCampaignForm();
+      setExportButtonsState(rawRows.length === 0);
+      clearBtn.disabled = rawRows.length === 0;
+      render();
+      renderRanking();
+      renderHistory();
+      renderAnalytics();
+      renderTV();
+      updateSystemSummary();
+      cloudApplyingState = false;
+    }
+
+    async function loadCloudState({ quiet = false } = {}) {
       try {
-        localStorage.setItem(key, JSON.stringify(value));
+        const response = await fetch('/api/state', { cache: 'no-store' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'Não foi possível carregar os dados compartilhados.');
+        cloudStateExists = Boolean(result.state);
+        if (result.state) {
+          applyCloudState(result.state);
+          clearLegacyStorage();
+          if (!quiet) addStatus('Dados compartilhados', 'Informações carregadas da nuvem para este computador.');
+        }
       } catch (error) {
-        console.warn('Não foi possível salvar no navegador:', error);
+        console.error(error);
+        if (!quiet) showToast('Nuvem indisponível', error.message);
       }
     }
 
@@ -9094,7 +9209,7 @@
         effectsToggleBtn.textContent = effectsEnabled ? 'Efeitos: ON' : 'Efeitos: OFF';
         effectsToggleBtn.classList.toggle('active', effectsEnabled);
       }
-      localStorage.setItem('vendasEffectsEnabled', effectsEnabled ? 'true' : 'false');
+      scheduleCloudSave();
     }
 
     function makeSparkle(x, y) {
@@ -10031,6 +10146,7 @@
         clearBtn.disabled = rawRows.length === 0;
         setPerformanceMode(rawRows.length + historicalRows.length > 2500);
         markUpdated(`${numberFormatter.format(rawRows.length)} linha(s) importada(s).`);
+        scheduleCloudSave(0);
         triggerConfetti(12);
         triggerCoinBurst(window.innerWidth / 2, 120, 5);
       } catch (error) {
@@ -10438,7 +10554,7 @@
 
     function clearSellerIndividualGoals() {
       sellerGoals = {};
-      localStorage.removeItem('vendasSellerIndividualGoals');
+      scheduleCloudSave();
       renderSellerGoalsPanel();
       renderRanking();
       markUpdated('Metas individuais limpas.');
@@ -11516,7 +11632,7 @@
       filteredRows = [];
       rankingRows = [];
       vendorPhotos = {};
-      localStorage.removeItem('vendasRankingPhotos');
+      scheduleCloudSave();
       statusList.innerHTML = '';
       updateAllFilterOptions();
       updateSellerPhotoSelect();
@@ -11532,6 +11648,7 @@
       renderHistory();
       lastUpdateLabel = '-';
       updateSystemSummary();
+      scheduleCloudSave(0);
       setBusy(false, 'Sistema limpo', 'Você pode anexar novos arquivos.', 0);
       showToast('Dados atuais limpos', 'Os resultados atuais foram removidos. A base histórica continua isolada somente para o cálculo percentual.');
     }
@@ -12096,6 +12213,10 @@
     renderAnalytics();
     setPerformanceMode(rawRows.length + historicalRows.length > 2500);
     updateSystemSummary();
+    loadCloudState();
+    window.setInterval(() => {
+      if (document.body.classList.contains('mode-tv')) loadCloudState({ quiet: true });
+    }, 30000);
     if (location.hash === '#indoor-tv') openWorkspace('tv');
   </script>
 </body>

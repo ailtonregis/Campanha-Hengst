@@ -1,0 +1,8 @@
+{
+  "name": "campanha-hengst",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "postgres": "^3.4.7"
+  }
+}
