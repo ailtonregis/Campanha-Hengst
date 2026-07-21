@@ -7047,9 +7047,108 @@
       .frame-export-status { grid-column: 1; }
     }
 
+    /* Navegação preview: login, menu inicial e áreas separadas */
+    .preview-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      overflow: auto;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(246, 196, 0, .22), transparent 30%),
+        radial-gradient(circle at 85% 80%, rgba(96, 165, 250, .13), transparent 34%),
+        #080a0f;
+    }
+    .preview-screen[hidden] { display: none !important; }
+    .preview-shell { width: min(1080px, 100%); }
+    .preview-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+    .preview-brand .preview-mark {
+      width: 52px; height: 52px; border-radius: 17px; display: grid; place-items: center;
+      color: #111; font-weight: 950; background: linear-gradient(135deg, var(--yellow), #ffe680);
+      box-shadow: 0 14px 38px rgba(246, 196, 0, .25);
+    }
+    .preview-brand strong { display: block; font-size: 1.1rem; }
+    .preview-brand span { color: var(--muted); font-size: .88rem; }
+    .login-card {
+      width: min(460px, 100%); margin: auto; padding: clamp(28px, 5vw, 48px);
+      border: 1px solid var(--line); border-radius: 30px; background: rgba(18, 23, 34, .94);
+      box-shadow: var(--shadow); backdrop-filter: blur(18px);
+    }
+    .login-card h1, .start-heading h1 { margin: 0 0 10px; letter-spacing: -.04em; }
+    .login-card > p, .start-heading p { margin: 0 0 28px; color: var(--muted); line-height: 1.6; }
+    .login-card label { display: grid; gap: 8px; margin-top: 16px; color: #dfe5f1; font-weight: 700; }
+    .login-card input {
+      width: 100%; padding: 14px 15px; border: 1px solid var(--line); border-radius: 13px;
+      color: var(--text); background: #0c111a; outline: none;
+    }
+    .login-card input:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px rgba(246,196,0,.12); }
+    .login-submit { width: 100%; margin-top: 22px; padding: 14px; }
+    .preview-note { display: block; margin-top: 16px; color: var(--muted); text-align: center; font-size: .78rem; }
+    .start-heading { margin-bottom: 28px; }
+    .start-heading h1 { font-size: clamp(2rem, 5vw, 3.7rem); }
+    .area-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .area-card {
+      min-height: 270px; padding: 30px; border: 1px solid var(--line); border-radius: 26px;
+      text-align: left; color: var(--text); background: linear-gradient(145deg, rgba(25,33,49,.96), rgba(12,16,24,.96));
+      box-shadow: var(--shadow); cursor: pointer; transition: transform .2s ease, border-color .2s ease;
+    }
+    .area-card:hover { transform: translateY(-5px); border-color: rgba(246,196,0,.55); }
+    .area-card-icon { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 18px; background: rgba(246,196,0,.13); font-size: 1.8rem; }
+    .area-card h2 { margin: 26px 0 10px; font-size: 1.55rem; }
+    .area-card p { margin: 0; color: var(--muted); line-height: 1.55; }
+    .area-card b { display: inline-block; margin-top: 22px; color: var(--yellow); }
+    .workspace-bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px;
+      padding: 10px 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(18,23,34,.78);
+    }
+    .workspace-context { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+    .workspace-context strong { color: var(--text); }
+    .start-button { padding: 10px 16px; }
+    body.preview-locked .app { display: none; }
+    body.mode-admin #tab-tv { display: none !important; }
+    body.mode-tv .app > header,
+    body.mode-tv .system-strip,
+    body.mode-tv .global-progress,
+    body.mode-tv .tabs,
+    body.mode-tv #frameExportPanel,
+    body.mode-tv .tab-panel:not(#tab-tv) { display: none !important; }
+    body.mode-tv .app { width: min(1700px, calc(100% - 32px)); }
+    body.mode-tv #tab-tv { display: block !important; }
+    body.mode-tv .workspace-bar { margin-bottom: 22px; }
+    @media (max-width: 720px) {
+      .area-grid { grid-template-columns: 1fr; }
+      .area-card { min-height: 220px; }
+      .workspace-bar { align-items: flex-start; }
+    }
+
   </style>
 </head>
-<body>
+<body class="preview-locked">
+
+  <section class="preview-screen" id="loginScreen" aria-labelledby="loginTitle">
+    <form class="login-card" id="previewLoginForm">
+      <div class="preview-brand"><span class="preview-mark">S</span><div><strong>Stärke Parts</strong><span>Campanha Hengst</span></div></div>
+      <h1 id="loginTitle">Bem-vindo</h1>
+      <p>Entre para acessar o ambiente de resultados e transmissão.</p>
+      <label>E-mail<input id="previewEmail" type="email" value="admin@starkeparts.com.br" autocomplete="username" required></label>
+      <label>Senha<input id="previewPassword" type="password" value="preview" autocomplete="current-password" required></label>
+      <button class="login-submit" type="submit">Entrar no sistema</button>
+      <small class="preview-note">Acesso demonstrativo • nenhuma credencial é enviada ou armazenada</small>
+    </form>
+  </section>
+
+  <section class="preview-screen" id="startScreen" aria-labelledby="startTitle" hidden>
+    <div class="preview-shell">
+      <div class="preview-brand"><span class="preview-mark">S</span><div><strong>Stärke Parts</strong><span>Central de acesso</span></div></div>
+      <div class="start-heading"><h1 id="startTitle">Onde você deseja entrar?</h1><p>As informações administrativas e a exibição da TV Indoor agora ficam em ambientes separados.</p></div>
+      <div class="area-grid">
+        <button class="area-card" id="openAdminArea" type="button"><span class="area-card-icon">📊</span><h2>Área administrativa</h2><p>Importe planilhas, gerencie metas, acompanhe rankings e consulte as análises.</p><b>Acessar administração →</b></button>
+        <button class="area-card" id="openTvArea" type="button"><span class="area-card-icon">📺</span><h2>Painel Indoor TV</h2><p>Abra a página de transmissão com cenas automáticas e controles dedicados.</p><b>Abrir painel da TV →</b></button>
+      </div>
+    </div>
+  </section>
 
   <div class="fx-bg" aria-hidden="true">
     <span class="fx-orb"></span>
@@ -7061,6 +7160,10 @@
   <div class="sparkle-field" id="sparkleField" aria-hidden="true"></div>
   <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
   <div class="app">
+    <div class="workspace-bar">
+      <div class="workspace-context"><span id="workspaceIcon">📊</span><span>Ambiente atual: <strong id="workspaceName">Área administrativa</strong></span></div>
+      <button class="secondary start-button" id="backToStartBtn" type="button">⌂ Iniciar</button>
+    </div>
     <header>
       <div class="brand">
         <div class="logo">XLS</div>
@@ -7113,7 +7216,6 @@
       <button class="tab-btn" data-tab="ranking" type="button">Campanha de Vendas</button>
       <button class="tab-btn" data-tab="history" type="button">Crescimento Hengst</button>
       <button class="tab-btn" data-tab="analytics" type="button">Análises Gerenciais</button>
-      <button class="tab-btn" data-tab="tv" type="button">TV Indoor</button>
     </nav>
 
     <section class="card frame-export-panel" id="frameExportPanel" aria-labelledby="frameExportTitle">
@@ -8046,6 +8148,44 @@
   </div>
 
   <script>
+    const loginScreen = document.getElementById('loginScreen');
+    const startScreen = document.getElementById('startScreen');
+    const previewLoginForm = document.getElementById('previewLoginForm');
+    const openAdminArea = document.getElementById('openAdminArea');
+    const openTvArea = document.getElementById('openTvArea');
+    const backToStartBtn = document.getElementById('backToStartBtn');
+    const workspaceName = document.getElementById('workspaceName');
+    const workspaceIcon = document.getElementById('workspaceIcon');
+
+    function showStartScreen() {
+      document.body.classList.add('preview-locked');
+      document.body.classList.remove('mode-admin', 'mode-tv');
+      loginScreen.hidden = true;
+      startScreen.hidden = false;
+      if (typeof stopTVCarousel === 'function') stopTVCarousel();
+      history.replaceState(null, '', `${location.pathname}${location.search}#iniciar`);
+    }
+
+    function openWorkspace(area) {
+      loginScreen.hidden = true;
+      startScreen.hidden = true;
+      document.body.classList.remove('preview-locked', 'mode-admin', 'mode-tv');
+      document.body.classList.add(area === 'tv' ? 'mode-tv' : 'mode-admin');
+      workspaceName.textContent = area === 'tv' ? 'Painel Indoor TV' : 'Área administrativa';
+      workspaceIcon.textContent = area === 'tv' ? '📺' : '📊';
+      setActiveTab(area === 'tv' ? 'tv' : 'results');
+      history.replaceState(null, '', `${location.pathname}${location.search}${area === 'tv' ? '#indoor-tv' : '#administrativo'}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    previewLoginForm.addEventListener('submit', event => {
+      event.preventDefault();
+      showStartScreen();
+    });
+    openAdminArea.addEventListener('click', () => openWorkspace('admin'));
+    openTvArea.addEventListener('click', () => openWorkspace('tv'));
+    backToStartBtn.addEventListener('click', showStartScreen);
+
     const fileInput = document.getElementById('fileInput');
     const dropzone = document.getElementById('dropzone');
     const statusList = document.getElementById('statusList');
