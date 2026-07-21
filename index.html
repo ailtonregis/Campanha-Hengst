@@ -3845,6 +3845,74 @@
       background: linear-gradient(90deg, #f6c400, #fff0a8 45%, #4ade80);
     }
 
+    .tv-sale-announcement {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      display: grid;
+      place-items: center;
+      padding: clamp(32px, 5vw, 88px);
+      opacity: 0;
+      visibility: hidden;
+      transform: scale(1.04);
+      transition: opacity .45s ease, transform .45s ease, visibility .45s;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(246,196,0,.25), transparent 34%),
+        linear-gradient(135deg, rgba(6,9,15,.98), rgba(17,24,39,.98));
+    }
+
+    .tv-sale-announcement.active {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+    }
+
+    .tv-sale-announcement-card {
+      width: min(980px, 92%);
+      display: grid;
+      justify-items: center;
+      gap: 18px;
+      text-align: center;
+    }
+
+    .tv-sale-announcement-kicker {
+      padding: 9px 16px;
+      border: 1px solid rgba(74,222,128,.38);
+      border-radius: 999px;
+      color: #bbf7d0;
+      background: rgba(74,222,128,.12);
+      font-size: clamp(.8rem, 1.2vw, 1.05rem);
+      font-weight: 950;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .tv-sale-announcement-avatar {
+      width: clamp(110px, 11vw, 180px);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 5px solid var(--yellow);
+      border-radius: 50%;
+      color: #111827;
+      background: linear-gradient(135deg, #fff4b0, var(--yellow));
+      box-shadow: 0 0 0 12px rgba(246,196,0,.1), 0 24px 70px rgba(246,196,0,.25);
+      font-size: clamp(2.2rem, 4vw, 4.2rem);
+      font-weight: 1000;
+      animation: tvSalePulse 1.1s ease-in-out infinite alternate;
+    }
+
+    .tv-sale-announcement-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .tv-sale-announcement h2 { margin: 0; font-size: clamp(2.3rem, 5vw, 5.4rem); line-height: 1; }
+    .tv-sale-announcement-value { color: var(--yellow); font-size: clamp(2rem, 4vw, 4.2rem); font-weight: 1000; }
+    .tv-sale-announcement-meta { color: var(--muted); font-size: clamp(1rem, 1.8vw, 1.55rem); font-weight: 800; }
+
+    @keyframes tvSalePulse {
+      from { transform: scale(.96); box-shadow: 0 0 0 8px rgba(246,196,0,.08), 0 24px 70px rgba(246,196,0,.2); }
+      to { transform: scale(1.04); box-shadow: 0 0 0 18px rgba(246,196,0,.14), 0 24px 90px rgba(246,196,0,.38); }
+    }
+
     .tv-slides {
       position: absolute;
       inset: 0 0 76px;
@@ -8302,6 +8370,15 @@
         <section class="tv-stage-shell">
           <div class="tv-stage" id="tvStage" aria-live="polite">
             <div class="tv-stage-topline"></div>
+            <aside class="tv-sale-announcement" id="tvSaleAnnouncement" aria-live="assertive" aria-hidden="true">
+              <div class="tv-sale-announcement-card">
+                <span class="tv-sale-announcement-kicker">Nova venda registrada</span>
+                <div class="tv-sale-announcement-avatar" id="tvSaleAvatar">ST</div>
+                <h2 id="tvSaleSeller">Vendedor</h2>
+                <strong class="tv-sale-announcement-value" id="tvSaleValue">R$ 0,00</strong>
+                <span class="tv-sale-announcement-meta" id="tvSaleMeta">Atualizando o ranking...</span>
+              </div>
+            </aside>
             <div class="tv-slides" id="tvSlides">
               <article class="tv-slide active">
                 <div class="tv-empty-state">
@@ -8556,6 +8633,11 @@
     const tvControlNote = document.getElementById('tvControlNote');
     const tvStage = document.getElementById('tvStage');
     const tvSlides = document.getElementById('tvSlides');
+    const tvSaleAnnouncement = document.getElementById('tvSaleAnnouncement');
+    const tvSaleAvatar = document.getElementById('tvSaleAvatar');
+    const tvSaleSeller = document.getElementById('tvSaleSeller');
+    const tvSaleValue = document.getElementById('tvSaleValue');
+    const tvSaleMeta = document.getElementById('tvSaleMeta');
     const tvSlideDots = document.getElementById('tvSlideDots');
     const tvClock = document.getElementById('tvClock');
     const tvDate = document.getElementById('tvDate');
@@ -8602,6 +8684,10 @@
     let tvClockTimer = null;
     let tvPaused = false;
     let tvSlideCount = 0;
+    let tvSaleQueue = [];
+    let tvSaleAnnouncementActive = false;
+    let tvSaleAnnouncementTimer = null;
+    let tvAudioContext = null;
 
     const OFFICIAL_SELLERS = [
       'Andre Garzon',
@@ -8686,6 +8772,7 @@
     let cloudLoadCompleted = false;
     let cloudApplyingState = false;
     let cloudSaveTimer = null;
+    let cloudPollBusy = false;
 
     function loadStoredObject(key, fallback) {
       return fallback;
@@ -8739,6 +8826,116 @@
       return result;
     }
 
+    function getTVSalesSnapshot(rows = rawRows) {
+      const sales = new Map();
+      getOfficialRows(Array.isArray(rows) ? rows : []).forEach(row => {
+        if (normalizeText(row.marca) !== 'hengst') return;
+        const nome = canonicalSellerName(row.nome || 'Vendedor não identificado');
+        const key = normalizeText(nome);
+        const current = sales.get(key) || { nome, filial: '', valor: 0, quantidade: 0 };
+        current.valor += Number(row.valor || 0);
+        current.quantidade += Number(row.quantidade || 0);
+        if (!current.filial && row.filial) current.filial = String(row.filial).trim();
+        sales.set(key, current);
+      });
+      return sales;
+    }
+
+    function findNewTVSales(previous, current) {
+      if (!(previous instanceof Map) || !(current instanceof Map)) return [];
+      return [...current.entries()].map(([key, sale]) => {
+        const oldSale = previous.get(key) || { valor: 0, quantidade: 0 };
+        return {
+          ...sale,
+          valorVenda: Math.max(0, sale.valor - Number(oldSale.valor || 0)),
+          quantidadeVenda: Math.max(0, sale.quantidade - Number(oldSale.quantidade || 0))
+        };
+      }).filter(sale => sale.valorVenda > 0.009 || sale.quantidadeVenda > 0)
+        .filter(sale => tvSettings.participants === null || tvSettings.participants.some(name => normalizeText(name) === normalizeText(sale.nome)))
+        .sort((a, b) => b.valorVenda - a.valorVenda || b.quantidadeVenda - a.quantidadeVenda);
+    }
+
+    async function unlockTVAudio() {
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return false;
+        if (!tvAudioContext) tvAudioContext = new AudioContextClass();
+        if (tvAudioContext.state === 'suspended') await tvAudioContext.resume();
+        return tvAudioContext.state === 'running';
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function playTVSaleSound() {
+      if (!tvAudioContext || tvAudioContext.state !== 'running') return;
+      const now = tvAudioContext.currentTime;
+      [523.25, 659.25, 783.99].forEach((frequency, index) => {
+        const oscillator = tvAudioContext.createOscillator();
+        const gain = tvAudioContext.createGain();
+        const start = now + index * .16;
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, start);
+        gain.gain.setValueAtTime(.0001, start);
+        gain.gain.exponentialRampToValueAtTime(.22, start + .025);
+        gain.gain.exponentialRampToValueAtTime(.0001, start + .42);
+        oscillator.connect(gain).connect(tvAudioContext.destination);
+        oscillator.start(start);
+        oscillator.stop(start + .45);
+      });
+    }
+
+    function goToTVRankingAfterSale() {
+      const rankingIndex = [...(tvSlides?.querySelectorAll('.tv-slide') || [])]
+        .findIndex(slide => slide.dataset.tvScene === 'ranking');
+      if (rankingIndex >= 0) goToTVSlide(rankingIndex);
+      else startTVCarousel();
+    }
+
+    function showNextTVSaleAnnouncement() {
+      if (tvSaleAnnouncementActive || !tvSaleQueue.length) return;
+      if (!document.body.classList.contains('mode-tv') || document.body.classList.contains('tv-config-open')) return;
+      const sale = tvSaleQueue.shift();
+      const photo = getVendorPhoto(sale.nome);
+      const updatedRows = getTVRows();
+      const position = updatedRows.findIndex(row => normalizeText(row.nome) === normalizeText(sale.nome));
+      tvSaleAnnouncementActive = true;
+      stopTVCarousel();
+      if (tvSaleSeller) tvSaleSeller.textContent = sale.nome;
+      if (tvSaleValue) tvSaleValue.textContent = sale.valorVenda > 0.009
+        ? `+ ${moneyFormatter.format(sale.valorVenda)}`
+        : `+ ${numberFormatter.format(sale.quantidadeVenda)} item(ns)`;
+      if (tvSaleMeta) {
+        const quantity = sale.quantidadeVenda > 0 ? `${numberFormatter.format(sale.quantidadeVenda)} item(ns)` : 'Venda confirmada';
+        const rank = position >= 0 ? `Agora em ${position + 1}º lugar` : 'Ranking atualizado';
+        tvSaleMeta.textContent = `${quantity} · ${sale.filial || 'Stärke Parts'} · ${rank}`;
+      }
+      if (tvSaleAvatar) tvSaleAvatar.innerHTML = photo
+        ? `<img src="${photo}" alt="Foto de ${escapeHtml(sale.nome)}">`
+        : escapeHtml(getInitials(sale.nome));
+      tvSaleAnnouncement?.classList.add('active');
+      tvSaleAnnouncement?.setAttribute('aria-hidden', 'false');
+      playTVSaleSound();
+      triggerConfetti(46);
+      clearTimeout(tvSaleAnnouncementTimer);
+      tvSaleAnnouncementTimer = window.setTimeout(() => {
+        tvSaleAnnouncement?.classList.remove('active');
+        tvSaleAnnouncement?.setAttribute('aria-hidden', 'true');
+        tvSaleAnnouncementActive = false;
+        if (tvSaleQueue.length) {
+          window.setTimeout(showNextTVSaleAnnouncement, 500);
+        } else {
+          goToTVRankingAfterSale();
+        }
+      }, 5500);
+    }
+
+    function queueTVSaleAnnouncements(sales) {
+      if (!Array.isArray(sales) || !sales.length || !document.body.classList.contains('mode-tv')) return;
+      tvSaleQueue.push(...sales);
+      showNextTVSaleAnnouncement();
+    }
+
     function applyCloudState(state) {
       if (!state || typeof state !== 'object') return;
       cloudApplyingState = true;
@@ -8785,8 +8982,12 @@
         cloudStateExists = Boolean(result.exists || result.state);
         const hasCloudUpdate = result.state && result.updatedAt !== cloudUpdatedAt;
         if (hasCloudUpdate) {
+          const previousSales = quiet && cloudUpdatedAt && document.body.classList.contains('mode-tv')
+            ? getTVSalesSnapshot(rawRows)
+            : null;
           applyCloudState(result.state);
           cloudUpdatedAt = result.updatedAt || null;
+          if (previousSales) queueTVSaleAnnouncements(findNewTVSales(previousSales, getTVSalesSnapshot(rawRows)));
           if (!quiet) addStatus('Dados compartilhados', 'Informações carregadas da nuvem para este computador.');
         }
         return true;
@@ -9881,7 +10082,7 @@
         ? 'todos os participantes'
         : `${tvSettings.participants.length} participante(s) selecionado(s)`;
       tvControlNote.textContent = `${rows.length} vendedor(es) exibidos de ${participantLabel} · TOP ${tvSettings.rows} · ${tvSlideCount} cena(s) · troca automática a cada ${tvSettings.interval} segundos.`;
-      if (isTVVisible()) startTVCarousel();
+      if (isTVVisible() && !tvSaleAnnouncementActive) startTVCarousel();
     }
 
     function isTVVisible() {
@@ -12025,6 +12226,7 @@
       renderTV();
       document.body.classList.remove('tv-config-open');
       if (tvSettingsToggleBtn) tvSettingsToggleBtn.textContent = '⚙ Configurar TV';
+      showNextTVSaleAnnouncement();
       markUpdated('Transmissão da TV Indoor atualizada.');
       showToast('TV Indoor atualizada', `${tvSlideCount} cena(s) prontas para transmissão.`);
     });
@@ -12035,12 +12237,16 @@
       document.body.classList.toggle('tv-config-open', isOpening);
       tvSettingsToggleBtn.textContent = isOpening ? '✕ Fechar configurações' : '⚙ Configurar TV';
       if (isOpening) stopTVCarousel();
-      else startTVCarousel();
+      else {
+        startTVCarousel();
+        showNextTVSaleAnnouncement();
+      }
     });
     tvCloseConfigBtn?.addEventListener('click', () => {
       document.body.classList.remove('tv-config-open');
       if (tvSettingsToggleBtn) tvSettingsToggleBtn.textContent = '⚙ Configurar TV';
       startTVCarousel();
+      showNextTVSaleAnnouncement();
     });
     tvBackToMenuBtn?.addEventListener('click', async () => {
       if (document.fullscreenElement) {
@@ -12441,6 +12647,10 @@
       }
     });
 
+    document.addEventListener('pointerdown', () => {
+      if (!tvAudioContext || tvAudioContext.state !== 'running') unlockTVAudio();
+    }, { passive: true });
+
     document.addEventListener('visibilitychange', () => {
       isPageVisible = !document.hidden;
       document.body.classList.toggle('page-hidden', !isPageVisible);
@@ -12473,9 +12683,12 @@
     setPerformanceMode(rawRows.length + historicalRows.length > 2500);
     updateSystemSummary();
     loadCloudState();
-    window.setInterval(() => {
-      if (document.body.classList.contains('mode-tv')) loadCloudState({ quiet: true });
-    }, 30000);
+    window.setInterval(async () => {
+      if (!document.body.classList.contains('mode-tv') || cloudPollBusy) return;
+      cloudPollBusy = true;
+      try { await loadCloudState({ quiet: true }); }
+      finally { cloudPollBusy = false; }
+    }, 5000);
     if (location.hash === '#indoor-tv') openWorkspace('tv');
   </script>
 </body>
