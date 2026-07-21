@@ -3735,6 +3735,58 @@
       line-height: 1.45;
     }
 
+    .tv-participants-field {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 10px;
+    }
+
+    .tv-participants-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .tv-participants-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tv-participants-actions button { min-height: 34px; padding: 7px 11px; font-size: 0.74rem; }
+
+    .tv-participant-checklist {
+      max-height: 190px;
+      overflow: auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel-2);
+      scrollbar-gutter: stable;
+    }
+
+    .tv-participant-checklist .check-option { min-height: 38px; padding: 8px 10px; }
+    .tv-config-auth {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(160px, .7fr) minmax(200px, 1fr) auto minmax(180px, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid rgba(246,196,0,.2);
+      border-radius: 14px;
+      background: rgba(246,196,0,.06);
+    }
+    .tv-config-auth input { min-height: 42px; }
+    .tv-config-auth-status { color: var(--muted); font-size: .8rem; line-height: 1.35; }
+    .tv-config-auth-status.authorized { color: var(--green); }
+    .tv-settings-toggle,
+    .tv-menu-button { display: none; }
+
     .tv-stage-shell {
       width: 100%;
       padding: 10px;
@@ -7134,6 +7186,44 @@
     }
     body.mode-tv .workspace-bar,
     body.mode-tv .tv-control-panel { display: none !important; }
+    body.mode-tv .tv-settings-toggle {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 140;
+      display: inline-flex;
+      min-height: 40px;
+      padding: 9px 13px;
+      opacity: 0.28;
+      box-shadow: 0 10px 30px rgba(0,0,0,.4);
+    }
+    body.mode-tv .tv-menu-button {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 140;
+      display: inline-flex;
+      min-height: 40px;
+      padding: 9px 13px;
+      opacity: 0.28;
+      box-shadow: 0 10px 30px rgba(0,0,0,.4);
+    }
+    body.mode-tv .tv-settings-toggle:hover,
+    body.mode-tv.tv-config-open .tv-settings-toggle,
+    body.mode-tv .tv-menu-button:hover { opacity: 1; }
+    body.mode-tv.tv-config-open .tv-control-panel {
+      position: fixed;
+      inset: 70px 18px 18px;
+      z-index: 130;
+      display: grid !important;
+      max-width: 1500px;
+      max-height: calc(100vh - 88px);
+      margin: 0 auto;
+      overflow: auto;
+      border: 1px solid rgba(246,196,0,.34);
+      background: rgba(12,16,24,.98);
+      box-shadow: 0 30px 100px rgba(0,0,0,.8);
+    }
     body.mode-tv #tab-tv {
       display: block !important;
       width: 100vw;
@@ -8115,6 +8205,8 @@
 
     <section id="tab-tv" class="tab-panel">
       <main class="tv-layout">
+        <button class="secondary tv-menu-button" id="tvBackToMenuBtn" type="button">⌂ Menu principal</button>
+        <button class="tv-settings-toggle" id="tvSettingsToggleBtn" type="button">⚙ Configurar TV</button>
         <section class="card tv-control-panel">
           <div class="tv-control-head">
             <div>
@@ -8143,6 +8235,7 @@
                 <option value="8" selected>TOP 8</option>
                 <option value="10">TOP 10</option>
                 <option value="12">TOP 12</option>
+                <option value="14">TOP 14</option>
               </select>
             </label>
             <label>
@@ -8161,6 +8254,22 @@
                 <label><input type="checkbox" value="growth" checked><span>Crescimento</span></label>
                 <label><input type="checkbox" value="products" checked><span>Qtd. por vendedor</span></label>
               </div>
+            </div>
+            <div class="tv-participants-field">
+              <div class="tv-participants-head">
+                <span>Participantes exibidos no ranking</span>
+                <div class="tv-participants-actions">
+                  <button class="secondary" id="tvSelectAllParticipantsBtn" type="button">Selecionar todos</button>
+                  <button class="secondary" id="tvClearParticipantsBtn" type="button">Limpar seleção</button>
+                </div>
+              </div>
+              <div class="tv-participant-checklist" id="tvParticipantChecklist"></div>
+            </div>
+            <div class="tv-config-auth">
+              <input id="tvConfigUsername" type="text" value="admin" autocomplete="username" aria-label="Usuário administrativo">
+              <input id="tvConfigPassword" type="password" autocomplete="current-password" placeholder="Senha administrativa" aria-label="Senha administrativa">
+              <button class="secondary" id="tvConfigLoginBtn" type="button">Autorizar salvamento</button>
+              <span class="tv-config-auth-status" id="tvConfigAuthStatus">Sem autorização: os filtros serão aplicados somente nesta tela.</span>
             </div>
           </div>
 
@@ -8413,6 +8522,15 @@
     const tvRowsSelect = document.getElementById('tvRowsSelect');
     const tvMetricSelect = document.getElementById('tvMetricSelect');
     const tvSceneOptions = document.getElementById('tvSceneOptions');
+    const tvParticipantChecklist = document.getElementById('tvParticipantChecklist');
+    const tvSelectAllParticipantsBtn = document.getElementById('tvSelectAllParticipantsBtn');
+    const tvClearParticipantsBtn = document.getElementById('tvClearParticipantsBtn');
+    const tvSettingsToggleBtn = document.getElementById('tvSettingsToggleBtn');
+    const tvBackToMenuBtn = document.getElementById('tvBackToMenuBtn');
+    const tvConfigUsername = document.getElementById('tvConfigUsername');
+    const tvConfigPassword = document.getElementById('tvConfigPassword');
+    const tvConfigLoginBtn = document.getElementById('tvConfigLoginBtn');
+    const tvConfigAuthStatus = document.getElementById('tvConfigAuthStatus');
     const tvApplyBtn = document.getElementById('tvApplyBtn');
     const tvPrevBtn = document.getElementById('tvPrevBtn');
     const tvPauseBtn = document.getElementById('tvPauseBtn');
@@ -8458,7 +8576,8 @@
       interval: 12,
       rows: 8,
       metric: 'valor',
-      scenes: ['summary', 'cards', 'ranking', 'growth', 'products']
+      scenes: ['summary', 'cards', 'ranking', 'growth', 'products'],
+      participants: null
     };
     let tvSettings = normalizeTVSettings(loadStoredObject('vendasTVIndoorSettings', DEFAULT_TV_SETTINGS));
     let tvSlideIndex = 0;
@@ -8572,13 +8691,13 @@
       }), delay);
     }
 
-    async function authenticateAdmin() {
+    async function authenticateAdmin(username, password) {
       const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: document.getElementById('previewUsername').value,
-          password: document.getElementById('previewPassword').value
+          username: username ?? document.getElementById('previewUsername').value,
+          password: password ?? document.getElementById('previewPassword').value
         })
       });
       const result = await response.json().catch(() => ({}));
@@ -9401,10 +9520,26 @@
       if (!scenes.includes('products')) scenes.push('products');
       return {
         interval: [8, 12, 15, 20, 30].includes(Number(settings.interval)) ? Number(settings.interval) : 12,
-        rows: [5, 8, 10, 12].includes(Number(settings.rows)) ? Number(settings.rows) : 8,
+        rows: [5, 8, 10, 12, 14].includes(Number(settings.rows)) ? Number(settings.rows) : 8,
         metric: settings.metric === 'quantidade' ? 'quantidade' : 'valor',
-        scenes
+        scenes,
+        participants: Array.isArray(settings.participants)
+          ? [...new Set(settings.participants.map(value => String(value || '').trim()).filter(Boolean))]
+          : null
       };
+    }
+
+    function syncTVParticipantControls() {
+      if (!tvParticipantChecklist) return;
+      const selected = tvSettings.participants === null
+        ? null
+        : new Set(tvSettings.participants.map(normalizeText));
+      tvParticipantChecklist.innerHTML = OFFICIAL_SELLERS.map(name => `
+        <label class="check-option">
+          <input type="checkbox" value="${escapeHtml(name)}" ${selected === null || selected.has(normalizeText(name)) ? 'checked' : ''}>
+          <span>${escapeHtml(name)}</span>
+        </label>
+      `).join('');
     }
 
     function syncTVControls() {
@@ -9416,6 +9551,7 @@
       tvSceneOptions?.querySelectorAll('input[type="checkbox"]').forEach(input => {
         input.checked = selected.has(input.value);
       });
+      syncTVParticipantControls();
       updateTVPauseButton();
     }
 
@@ -9427,15 +9563,24 @@
         interval: Number(tvIntervalSelect?.value || 12),
         rows: Number(tvRowsSelect?.value || 8),
         metric: tvMetricSelect?.value || 'valor',
-        scenes
+        scenes,
+        participants: tvParticipantChecklist
+          ? [...getCheckedValues(tvParticipantChecklist)]
+          : tvSettings.participants
       });
+    }
+
+    function filterTVParticipants(rows) {
+      if (tvSettings.participants === null) return rows;
+      const selected = new Set(tvSettings.participants.map(normalizeText));
+      return rows.filter(row => selected.has(normalizeText(canonicalSellerName(row.nome))));
     }
 
     function getTVRows() {
       const rows = rankingRows.length
         ? [...rankingRows]
         : sortRankingRows(consolidateRankingRows(applyRankingFilters(getOfficialRows(rawRows)), true));
-      return [...rows].sort((a, b) => {
+      return filterTVParticipants([...rows]).sort((a, b) => {
         if (tvSettings.metric === 'quantidade') return b.quantidade - a.quantidade || b.valor - a.valor;
         return b.valor - a.valor || b.quantidade - a.quantidade;
       });
@@ -9467,7 +9612,7 @@
         }
         map.set(key, existing);
       });
-      return [...map.values()]
+      return filterTVParticipants([...map.values()])
         .sort((a, b) => b.quantidade - a.quantidade || b.valor - a.valor || a.nome.localeCompare(b.nome, 'pt-BR'));
     }
 
@@ -9645,7 +9790,7 @@
     }
 
     function buildTVProductsSlide(periodLabel) {
-      const sellerProductRows = getTVProductRows().slice(0, Math.min(tvSettings.rows, 12));
+      const sellerProductRows = getTVProductRows().slice(0, tvSettings.rows);
       const isDense = sellerProductRows.length > 8;
 
       const rowsHtml = sellerProductRows.length ? sellerProductRows.map((row, index) => `
@@ -9715,7 +9860,10 @@
       tvSlideIndex = Math.min(tvSlideIndex, Math.max(0, tvSlideCount - 1));
       tvSlideDots.innerHTML = Array.from({ length: tvSlideCount }, (_, index) => `<button class="tv-slide-dot${index === tvSlideIndex ? ' active' : ''}" type="button" data-tv-index="${index}" aria-label="Abrir cena ${index + 1}"></button>`).join('');
       goToTVSlide(tvSlideIndex, false);
-      tvControlNote.textContent = `${rows.length} vendedor(es) nos filtros atuais · ${tvSlideCount} cena(s) · troca automática a cada ${tvSettings.interval} segundos.`;
+      const participantLabel = tvSettings.participants === null
+        ? 'todos os participantes'
+        : `${tvSettings.participants.length} participante(s) selecionado(s)`;
+      tvControlNote.textContent = `${rows.length} vendedor(es) exibidos de ${participantLabel} · TOP ${tvSettings.rows} · ${tvSlideCount} cena(s) · troca automática a cada ${tvSettings.interval} segundos.`;
       if (isTVVisible()) startTVCarousel();
     }
 
@@ -11858,8 +12006,50 @@
       storeObject('vendasTVIndoorSettings', tvSettings);
       tvSlideIndex = 0;
       renderTV();
+      document.body.classList.remove('tv-config-open');
+      if (tvSettingsToggleBtn) tvSettingsToggleBtn.textContent = '⚙ Configurar TV';
       markUpdated('Transmissão da TV Indoor atualizada.');
       showToast('TV Indoor atualizada', `${tvSlideCount} cena(s) prontas para transmissão.`);
+    });
+    tvSelectAllParticipantsBtn?.addEventListener('click', () => setChecklistState(tvParticipantChecklist, true));
+    tvClearParticipantsBtn?.addEventListener('click', () => setChecklistState(tvParticipantChecklist, false));
+    tvSettingsToggleBtn?.addEventListener('click', () => {
+      const isOpening = !document.body.classList.contains('tv-config-open');
+      document.body.classList.toggle('tv-config-open', isOpening);
+      tvSettingsToggleBtn.textContent = isOpening ? '✕ Fechar configurações' : '⚙ Configurar TV';
+      if (isOpening) stopTVCarousel();
+      else startTVCarousel();
+    });
+    tvBackToMenuBtn?.addEventListener('click', async () => {
+      if (document.fullscreenElement) {
+        try { await document.exitFullscreen(); } catch (error) { /* Continua retornando ao menu. */ }
+      }
+      document.body.classList.remove('tv-config-open');
+      if (tvSettingsToggleBtn) tvSettingsToggleBtn.textContent = '⚙ Configurar TV';
+      showStartScreen();
+    });
+    tvConfigLoginBtn?.addEventListener('click', async () => {
+      tvConfigLoginBtn.disabled = true;
+      tvConfigLoginBtn.textContent = 'Autorizando...';
+      try {
+        await authenticateAdmin(tvConfigUsername?.value || 'admin', tvConfigPassword?.value || '');
+        const cloudReady = await loadCloudState({ quiet: true });
+        if (!cloudReady) throw new Error('A nuvem não respondeu. Tente novamente.');
+        if (tvConfigPassword) tvConfigPassword.value = '';
+        if (tvConfigAuthStatus) {
+          tvConfigAuthStatus.textContent = 'Autorizado: alterações serão salvas na nuvem para todas as TVs.';
+          tvConfigAuthStatus.classList.add('authorized');
+        }
+        showToast('Configuração autorizada', 'Os próximos filtros aplicados serão compartilhados na nuvem.');
+      } catch (error) {
+        if (tvConfigAuthStatus) {
+          tvConfigAuthStatus.textContent = error.message;
+          tvConfigAuthStatus.classList.remove('authorized');
+        }
+      } finally {
+        tvConfigLoginBtn.disabled = false;
+        tvConfigLoginBtn.textContent = 'Autorizar salvamento';
+      }
     });
     tvPrevBtn?.addEventListener('click', previousTVSlide);
     tvNextBtn?.addEventListener('click', nextTVSlide);
