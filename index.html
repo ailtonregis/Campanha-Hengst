@@ -7071,8 +7071,9 @@
     }
     .preview-brand strong { display: block; font-size: 1.1rem; }
     .preview-brand span { color: var(--muted); font-size: .88rem; }
+    .access-grid { display: grid; grid-template-columns: minmax(320px, 460px) 1fr; gap: 22px; align-items: stretch; }
     .login-card {
-      width: min(460px, 100%); margin: auto; padding: clamp(28px, 5vw, 48px);
+      width: 100%; padding: clamp(28px, 5vw, 48px);
       border: 1px solid var(--line); border-radius: 30px; background: rgba(18, 23, 34, .94);
       box-shadow: var(--shadow); backdrop-filter: blur(18px);
     }
@@ -7099,6 +7100,11 @@
     .area-card h2 { margin: 26px 0 10px; font-size: 1.55rem; }
     .area-card p { margin: 0; color: var(--muted); line-height: 1.55; }
     .area-card b { display: inline-block; margin-top: 22px; color: var(--yellow); }
+    .public-tv-card { display: flex; flex-direction: column; justify-content: center; }
+    .public-tv-card .access-badge {
+      align-self: flex-start; margin-bottom: 18px; padding: 7px 11px; border-radius: 999px;
+      color: var(--green); background: rgba(74,222,128,.1); font-size: .76rem; font-weight: 900;
+    }
     .workspace-bar {
       display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px;
       padding: 10px 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(18,23,34,.78);
@@ -7118,6 +7124,7 @@
     body.mode-tv #tab-tv { display: block !important; }
     body.mode-tv .workspace-bar { margin-bottom: 22px; }
     @media (max-width: 720px) {
+      .access-grid,
       .area-grid { grid-template-columns: 1fr; }
       .area-card { min-height: 220px; }
       .workspace-bar { align-items: flex-start; }
@@ -7128,15 +7135,26 @@
 <body class="preview-locked">
 
   <section class="preview-screen" id="loginScreen" aria-labelledby="loginTitle">
-    <form class="login-card" id="previewLoginForm">
+    <div class="preview-shell">
       <div class="preview-brand"><span class="preview-mark">S</span><div><strong>Stärke Parts</strong><span>Campanha Hengst</span></div></div>
-      <h1 id="loginTitle">Bem-vindo</h1>
-      <p>Entre para acessar o ambiente de resultados e transmissão.</p>
-      <label>E-mail<input id="previewEmail" type="email" value="admin@starkeparts.com.br" autocomplete="username" required></label>
-      <label>Senha<input id="previewPassword" type="password" value="preview" autocomplete="current-password" required></label>
-      <button class="login-submit" type="submit">Entrar no sistema</button>
-      <small class="preview-note">Acesso demonstrativo • nenhuma credencial é enviada ou armazenada</small>
-    </form>
+      <div class="access-grid">
+        <form class="login-card" id="previewLoginForm">
+          <h1 id="loginTitle">Painel administrativo</h1>
+          <p>Entre com seu e-mail e senha para gerenciar resultados, metas, rankings e análises.</p>
+          <label>E-mail<input id="previewEmail" type="email" value="admin@starkeparts.com.br" autocomplete="username" required></label>
+          <label>Senha<input id="previewPassword" type="password" value="preview" autocomplete="current-password" required></label>
+          <button class="login-submit" type="submit">Entrar na administração</button>
+          <small class="preview-note">Acesso administrativo demonstrativo</small>
+        </form>
+        <button class="area-card public-tv-card" id="openPublicTvArea" type="button">
+          <span class="access-badge">ACESSO LIVRE • SEM LOGIN</span>
+          <span class="area-card-icon">📺</span>
+          <h2>Painel Indoor TV</h2>
+          <p>Abra diretamente a página de transmissão com cenas automáticas e controles dedicados.</p>
+          <b>Abrir painel da TV →</b>
+        </button>
+      </div>
+    </div>
   </section>
 
   <section class="preview-screen" id="startScreen" aria-labelledby="startTitle" hidden>
@@ -8151,6 +8169,7 @@
     const loginScreen = document.getElementById('loginScreen');
     const startScreen = document.getElementById('startScreen');
     const previewLoginForm = document.getElementById('previewLoginForm');
+    const openPublicTvArea = document.getElementById('openPublicTvArea');
     const openAdminArea = document.getElementById('openAdminArea');
     const openTvArea = document.getElementById('openTvArea');
     const backToStartBtn = document.getElementById('backToStartBtn');
@@ -8160,8 +8179,8 @@
     function showStartScreen() {
       document.body.classList.add('preview-locked');
       document.body.classList.remove('mode-admin', 'mode-tv');
-      loginScreen.hidden = true;
-      startScreen.hidden = false;
+      loginScreen.hidden = false;
+      startScreen.hidden = true;
       if (typeof stopTVCarousel === 'function') stopTVCarousel();
       history.replaceState(null, '', `${location.pathname}${location.search}#iniciar`);
     }
@@ -8180,8 +8199,9 @@
 
     previewLoginForm.addEventListener('submit', event => {
       event.preventDefault();
-      showStartScreen();
+      openWorkspace('admin');
     });
+    openPublicTvArea.addEventListener('click', () => openWorkspace('tv'));
     openAdminArea.addEventListener('click', () => openWorkspace('admin'));
     openTvArea.addEventListener('click', () => openWorkspace('tv'));
     backToStartBtn.addEventListener('click', showStartScreen);
@@ -12076,6 +12096,7 @@
     renderAnalytics();
     setPerformanceMode(rawRows.length + historicalRows.length > 2500);
     updateSystemSummary();
+    if (location.hash === '#indoor-tv') openWorkspace('tv');
   </script>
 </body>
 </html>
