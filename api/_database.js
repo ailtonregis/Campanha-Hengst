@@ -11,8 +11,10 @@ function getDatabase() {
   if (!sql) {
     sql = postgres(process.env.POSTGRES_URL, {
       max: 1,
-      idle_timeout: 20,
-      connect_timeout: 15,
+      idle_timeout: 10,
+      max_lifetime: 60,
+      connect_timeout: 10,
+      prepare: false,
       ssl: 'require'
     });
   }
@@ -23,13 +25,18 @@ function getDatabase() {
 async function ensureSchema() {
   const database = getDatabase();
   if (!initialized) {
-    await database`
-      create table if not exists campaign_project_state (
-        id text primary key,
-        state jsonb not null default '{}'::jsonb,
-        updated_at timestamptz not null default now()
-      )
+    const [schema] = await database`
+      select to_regclass('public.campaign_project_state') as table_name
     `;
+    if (!schema?.table_name) {
+      await database`
+        create table campaign_project_state (
+          id text primary key,
+          state jsonb not null default '{}'::jsonb,
+          updated_at timestamptz not null default now()
+        )
+      `;
+    }
     initialized = true;
   }
   return database;

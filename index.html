@@ -8248,8 +8248,9 @@
       submitButton.textContent = 'Entrando...';
       try {
         await authenticateAdmin();
+        const cloudReady = await loadCloudState({ quiet: true });
+        if (!cloudReady) throw new Error('A nuvem não respondeu. Aguarde e tente entrar novamente.');
         openWorkspace('admin');
-        if (!cloudStateExists) await saveCloudState();
       } catch (error) {
         showToast('Não foi possível entrar', error.message);
       } finally {
@@ -8441,7 +8442,7 @@
       individualGoal: 0,
       prize: 'Defina uma premiação'
     });
-    let effectsEnabled = loadLegacyValue('vendasEffectsEnabled', 'true') !== 'false';
+    let effectsEnabled = true;
     let lastCelebratedTopSeller = '';
 
     const DEFAULT_CARD_DISPLAY_SETTINGS = {
@@ -8546,24 +8547,12 @@
     let cloudCanWrite = false;
     let cloudStateExists = false;
     let cloudUpdatedAt = null;
+    let cloudLoadCompleted = false;
     let cloudApplyingState = false;
     let cloudSaveTimer = null;
 
-    function loadLegacyValue(key, fallback) {
-      try {
-        return localStorage.getItem(key) ?? fallback;
-      } catch (error) {
-        return fallback;
-      }
-    }
-
     function loadStoredObject(key, fallback) {
-      try {
-        const stored = loadLegacyValue(key, '');
-        return stored ? JSON.parse(stored) : fallback;
-      } catch (error) {
-        return fallback;
-      }
+      return fallback;
     }
 
     function storeObject() {
@@ -8574,14 +8563,8 @@
       return { version: 1, rawRows, vendorPhotos, sellerGoals, campaignSettings, cardDisplaySettings, tvSettings, effectsEnabled };
     }
 
-    function clearLegacyStorage() {
-      ['vendasRankingPhotos', 'vendasSellerIndividualGoals', 'vendasCampaignSettings',
-        'vendasEffectsEnabled', 'vendasCardDisplaySettings', 'vendasTVIndoorSettings']
-        .forEach(key => localStorage.removeItem(key));
-    }
-
     function scheduleCloudSave(delay = 700) {
-      if (!cloudCanWrite || cloudApplyingState) return;
+      if (!cloudCanWrite || !cloudLoadCompleted || cloudApplyingState) return;
       clearTimeout(cloudSaveTimer);
       cloudSaveTimer = setTimeout(() => saveCloudState().catch(error => {
         console.error(error);
@@ -8604,19 +8587,19 @@
     }
 
     async function saveCloudState() {
-      if (!cloudCanWrite) return;
+      if (!cloudCanWrite) throw new Error('Faça login novamente para salvar na nuvem.');
+      if (!cloudLoadCompleted) throw new Error('Os dados da nuvem ainda não terminaram de carregar.');
       clearTimeout(cloudSaveTimer);
       const response = await fetch('/api/state', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: getCloudState() })
+        body: JSON.stringify({ state: getCloudState(), expectedUpdatedAt: cloudUpdatedAt })
       });
       const result = await response.json().catch(() => ({}));
       if (response.status === 401) cloudCanWrite = false;
       if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os dados compartilhados.');
       cloudStateExists = true;
       cloudUpdatedAt = result.updatedAt || cloudUpdatedAt;
-      clearLegacyStorage();
       return result;
     }
 
@@ -8650,20 +8633,32 @@
 
     async function loadCloudState({ quiet = false } = {}) {
       try {
+        if (quiet && cloudUpdatedAt) {
+          const versionResponse = await fetch('/api/state', { method: 'HEAD', cache: 'no-store' });
+          if (!versionResponse.ok) throw new Error('Não foi possível verificar a atualização dos dados.');
+          const remoteUpdatedAt = versionResponse.headers.get('X-Project-Updated-At');
+          if (remoteUpdatedAt === cloudUpdatedAt) {
+            cloudLoadCompleted = true;
+            return true;
+          }
+        }
         const response = await fetch('/api/state', { cache: 'no-store' });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || 'Não foi possível carregar os dados compartilhados.');
-        cloudStateExists = Boolean(result.state);
+        cloudLoadCompleted = true;
+        cloudStateExists = Boolean(result.exists || result.state);
         const hasCloudUpdate = result.state && result.updatedAt !== cloudUpdatedAt;
         if (hasCloudUpdate) {
           applyCloudState(result.state);
           cloudUpdatedAt = result.updatedAt || null;
-          clearLegacyStorage();
           if (!quiet) addStatus('Dados compartilhados', 'Informações carregadas da nuvem para este computador.');
         }
+        return true;
       } catch (error) {
+        cloudLoadCompleted = false;
         console.error(error);
         if (!quiet) showToast('Nuvem indisponível', error.message);
+        return false;
       }
     }
 
