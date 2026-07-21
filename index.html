@@ -3667,6 +3667,19 @@
       animation: tvLivePulse 1.8s ease-in-out infinite;
     }
 
+    .tv-control-head-actions {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tv-close-config-btn { display: none; }
+
+    body.mode-tv.tv-config-open .tv-close-config-btn {
+      display: inline-flex;
+    }
+
     .tv-control-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(170px, 0.7fr)) minmax(360px, 1.5fr);
@@ -8214,7 +8227,10 @@
               <h2>Painel de transmissão</h2>
               <p>Apresenta os dados atuais da campanha em cenas automáticas, com textos ampliados e tabelas dimensionadas para telas 16:9.</p>
             </div>
-            <div class="tv-live-badge"><span></span> Pronto para exibir</div>
+            <div class="tv-control-head-actions">
+              <div class="tv-live-badge"><span></span> Pronto para exibir</div>
+              <button class="secondary tv-close-config-btn" id="tvCloseConfigBtn" type="button">✕ Sair desta área</button>
+            </div>
           </div>
 
           <div class="tv-control-grid">
@@ -8527,6 +8543,7 @@
     const tvClearParticipantsBtn = document.getElementById('tvClearParticipantsBtn');
     const tvSettingsToggleBtn = document.getElementById('tvSettingsToggleBtn');
     const tvBackToMenuBtn = document.getElementById('tvBackToMenuBtn');
+    const tvCloseConfigBtn = document.getElementById('tvCloseConfigBtn');
     const tvConfigUsername = document.getElementById('tvConfigUsername');
     const tvConfigPassword = document.getElementById('tvConfigPassword');
     const tvConfigLoginBtn = document.getElementById('tvConfigLoginBtn');
@@ -12019,6 +12036,11 @@
       tvSettingsToggleBtn.textContent = isOpening ? '✕ Fechar configurações' : '⚙ Configurar TV';
       if (isOpening) stopTVCarousel();
       else startTVCarousel();
+    });
+    tvCloseConfigBtn?.addEventListener('click', () => {
+      document.body.classList.remove('tv-config-open');
+      if (tvSettingsToggleBtn) tvSettingsToggleBtn.textContent = '⚙ Configurar TV';
+      startTVCarousel();
     });
     tvBackToMenuBtn?.addEventListener('click', async () => {
       if (document.fullscreenElement) {
