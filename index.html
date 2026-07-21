@@ -7120,9 +7120,53 @@
     body.mode-tv .tabs,
     body.mode-tv #frameExportPanel,
     body.mode-tv .tab-panel:not(#tab-tv) { display: none !important; }
-    body.mode-tv .app { width: min(1700px, calc(100% - 32px)); }
-    body.mode-tv #tab-tv { display: block !important; }
-    body.mode-tv .workspace-bar { margin-bottom: 22px; }
+    body.mode-tv {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #000;
+    }
+    body.mode-tv .app {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+    body.mode-tv .workspace-bar,
+    body.mode-tv .tv-control-panel { display: none !important; }
+    body.mode-tv #tab-tv {
+      display: block !important;
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+    body.mode-tv .tv-layout {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      place-items: center;
+      margin: 0;
+      padding: 0;
+    }
+    body.mode-tv .tv-stage-shell {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: #000;
+      box-shadow: none;
+    }
+    body.mode-tv .tv-stage {
+      width: min(100vw, calc(100vh * 16 / 9));
+      height: min(100vh, calc(100vw * 9 / 16));
+      min-height: 0;
+      aspect-ratio: 16 / 9;
+      border-radius: 0;
+    }
     @media (max-width: 720px) {
       .access-grid,
       .area-grid { grid-template-columns: 1fr; }
@@ -8501,6 +8545,7 @@
 
     let cloudCanWrite = false;
     let cloudStateExists = false;
+    let cloudUpdatedAt = null;
     let cloudApplyingState = false;
     let cloudSaveTimer = null;
 
@@ -8570,6 +8615,7 @@
       if (response.status === 401) cloudCanWrite = false;
       if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os dados compartilhados.');
       cloudStateExists = true;
+      cloudUpdatedAt = result.updatedAt || cloudUpdatedAt;
       clearLegacyStorage();
       return result;
     }
@@ -8608,8 +8654,10 @@
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || 'Não foi possível carregar os dados compartilhados.');
         cloudStateExists = Boolean(result.state);
-        if (result.state) {
+        const hasCloudUpdate = result.state && result.updatedAt !== cloudUpdatedAt;
+        if (hasCloudUpdate) {
           applyCloudState(result.state);
+          cloudUpdatedAt = result.updatedAt || null;
           clearLegacyStorage();
           if (!quiet) addStatus('Dados compartilhados', 'Informações carregadas da nuvem para este computador.');
         }
@@ -9697,7 +9745,8 @@
       tvSlideIndex = ((Number(index) % slides.length) + slides.length) % slides.length;
       slides.forEach((slide, slideIndex) => slide.classList.toggle('active', slideIndex === tvSlideIndex));
       tvSlideDots?.querySelectorAll('.tv-slide-dot').forEach((dot, dotIndex) => dot.classList.toggle('active', dotIndex === tvSlideIndex));
-      if (restartTimer) restartTVTimerBar();
+      if (restartTimer) startTVCarousel();
+      else restartTVTimerBar();
     }
 
     function nextTVSlide() {
@@ -9710,16 +9759,19 @@
 
     function startTVCarousel() {
       stopTVCarousel(false);
-      if (tvPaused || tvSlideCount <= 1 || !isTVVisible()) {
+      if (tvPaused || tvSlideCount <= 1 || !isTVVisible() || document.hidden) {
         restartTVTimerBar();
         return;
       }
-      tvTimer = window.setInterval(nextTVSlide, tvSettings.interval * 1000);
+      tvTimer = window.setTimeout(() => {
+        tvTimer = null;
+        nextTVSlide();
+      }, tvSettings.interval * 1000);
       restartTVTimerBar();
     }
 
     function stopTVCarousel(clearBar = true) {
-      if (tvTimer) window.clearInterval(tvTimer);
+      if (tvTimer) window.clearTimeout(tvTimer);
       tvTimer = null;
       if (clearBar && tvTimerBar) {
         tvTimerBar.style.animation = 'none';
