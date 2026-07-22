@@ -6283,53 +6283,6 @@
     .tv-slide[data-tv-scene="products"] .tv-table .tv-col-branch { width: 18%; }
     .tv-slide[data-tv-scene="products"] .tv-table .tv-col-number { width: 20.5%; }
 
-    /* TOP 13/14: todas as posições permanecem visíveis sem cortar a última linha. */
-    .tv-table.tv-table-ultra-dense th,
-    .tv-table.tv-table-ultra-dense td {
-      padding: clamp(4px, .38vh, 7px) clamp(9px, .62vw, 12px);
-      line-height: 1.08;
-    }
-
-    .tv-table.tv-table-ultra-dense th {
-      font-size: clamp(.61rem, .65vw, .76rem);
-    }
-
-    .tv-table.tv-table-ultra-dense td,
-    .tv-table.tv-table-ultra-dense td strong,
-    .tv-table.tv-table-ultra-dense td.tv-number,
-    .tv-table.tv-table-ultra-dense .tv-growth-pill {
-      font-size: clamp(.7rem, .76vw, .9rem);
-    }
-
-    .tv-table.tv-table-ultra-dense .tv-col-position,
-    .tv-table.tv-table-ultra-dense .tv-col-position strong,
-    .tv-table.tv-table-ultra-dense .tv-col-seller,
-    .tv-table.tv-table-ultra-dense .tv-col-seller strong {
-      white-space: nowrap;
-      overflow: visible;
-      text-overflow: clip;
-      word-break: normal;
-    }
-
-    .tv-table.tv-table-ultra-dense td.tv-col-goal strong {
-      font-size: clamp(.66rem, .72vw, .84rem);
-    }
-
-    .tv-table.tv-table-ultra-dense td.tv-col-goal small {
-      margin-top: 2px;
-      font-size: clamp(.55rem, .59vw, .7rem);
-    }
-
-    .tv-table.tv-table-ultra-dense .tv-goal-mini-track {
-      height: 5px;
-      margin-top: 3px;
-    }
-
-    .tv-table.tv-table-ultra-dense .tv-growth-pill {
-      min-width: clamp(76px, 5.2vw, 98px);
-      padding: 5px 8px;
-    }
-
     /* Ranking ampliado e distribuído para leitura em televisores Full HD. */
     .tv-table th,
     .tv-table td {
@@ -6415,6 +6368,53 @@
     .tv-slide[data-tv-scene="products"] .tv-table .tv-col-seller { width: 32%; }
     .tv-slide[data-tv-scene="products"] .tv-table .tv-col-branch { width: 18%; }
     .tv-slide[data-tv-scene="products"] .tv-table .tv-col-number { width: 20.5%; }
+
+    /* TOP 13/14 vem por último para nunca ser sobrescrito pelas regras ampliadas. */
+    .tv-table.tv-table-dense.tv-table-ultra-dense th,
+    .tv-table.tv-table-dense.tv-table-ultra-dense td {
+      padding: clamp(3px, .3vh, 5px) clamp(8px, .55vw, 11px);
+      line-height: 1.04;
+    }
+
+    .tv-table.tv-table-dense.tv-table-ultra-dense th {
+      font-size: clamp(.58rem, .61vw, .72rem);
+    }
+
+    .tv-table.tv-table-dense.tv-table-ultra-dense td,
+    .tv-table.tv-table-dense.tv-table-ultra-dense td strong,
+    .tv-table.tv-table-dense.tv-table-ultra-dense td.tv-number,
+    .tv-table.tv-table-dense.tv-table-ultra-dense .tv-growth-pill {
+      font-size: clamp(.66rem, .71vw, .84rem);
+    }
+
+    .tv-table.tv-table-ultra-dense .tv-col-position,
+    .tv-table.tv-table-ultra-dense .tv-col-position strong,
+    .tv-table.tv-table-ultra-dense .tv-col-seller,
+    .tv-table.tv-table-ultra-dense .tv-col-seller strong {
+      white-space: nowrap;
+      overflow: visible;
+      text-overflow: clip;
+      word-break: normal;
+    }
+
+    .tv-table.tv-table-dense.tv-table-ultra-dense td.tv-col-goal strong {
+      font-size: clamp(.61rem, .65vw, .76rem);
+    }
+
+    .tv-table.tv-table-dense.tv-table-ultra-dense td.tv-col-goal small {
+      margin-top: 1px;
+      font-size: clamp(.5rem, .53vw, .62rem);
+    }
+
+    .tv-table.tv-table-dense.tv-table-ultra-dense .tv-goal-mini-track {
+      height: 4px;
+      margin-top: 2px;
+    }
+
+    .tv-table.tv-table-dense.tv-table-ultra-dense .tv-growth-pill {
+      min-width: clamp(72px, 4.8vw, 92px);
+      padding: 4px 7px;
+    }
 
   
 
