@@ -37,6 +37,46 @@ async function ensureSchema() {
         )
       `;
     }
+    await database`
+      create table if not exists campaign_project_snapshots (
+        id bigserial primary key,
+        project_id text not null,
+        reason text not null,
+        state jsonb not null,
+        metadata jsonb not null default '{}'::jsonb,
+        created_by text not null default 'admin',
+        created_at timestamptz not null default now()
+      )
+    `;
+    await database`
+      create index if not exists campaign_project_snapshots_project_created_idx
+      on campaign_project_snapshots (project_id, created_at desc)
+    `;
+    await database`
+      create table if not exists campaign_update_history (
+        id bigserial primary key,
+        project_id text not null,
+        origin text not null,
+        period_start date,
+        period_end date,
+        record_count integer not null default 0,
+        valid_count integer not null default 0,
+        discarded_count integer not null default 0,
+        total_value numeric not null default 0,
+        total_quantity numeric not null default 0,
+        duration_ms integer not null default 0,
+        result text not null,
+        message text not null default '',
+        snapshot_id bigint references campaign_project_snapshots(id) on delete set null,
+        metadata jsonb not null default '{}'::jsonb,
+        created_by text not null default 'admin',
+        created_at timestamptz not null default now()
+      )
+    `;
+    await database`
+      create index if not exists campaign_update_history_project_created_idx
+      on campaign_update_history (project_id, created_at desc)
+    `;
     initialized = true;
   }
   return database;

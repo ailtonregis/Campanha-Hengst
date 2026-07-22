@@ -1,0 +1,29 @@
+{
+  "type": "hengst-jacsys-simulation",
+  "version": 1,
+  "generatedAt": "2026-07-22T12:00:00.000Z",
+  "period": {
+    "start": "2026-07-01",
+    "end": "2026-07-31"
+  },
+  "brand": {
+    "name": "HENGST",
+    "internalCode": "INFORME_O_CODIGO_REAL"
+  },
+  "records": [
+    {
+      "nome": "Vinicius Silva",
+      "filial": "Matriz",
+      "marca": "HENGST",
+      "quantidade": 2,
+      "valor": 350.5,
+      "pedido": "PEDIDO-SIM-001",
+      "documento": "DOCUMENTO-SIM-001",
+      "cliente": "Cliente de simulação",
+      "produto": "Filtro de simulação",
+      "codigoProduto": "PRODUTO-SIM-001",
+      "data": "2026-07-22",
+      "origem": "JACSYS"
+    }
+  ]
+}
