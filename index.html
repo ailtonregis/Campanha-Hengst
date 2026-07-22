@@ -7730,6 +7730,31 @@
       min-height: 0;
       aspect-ratio: 16 / 9;
       border-radius: 0;
+      isolation: isolate;
+      overflow: hidden;
+    }
+
+    .tv-stage:fullscreen .tv-sale-announcement,
+    .tv-stage:-webkit-full-screen .tv-sale-announcement {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 2147483647;
+      padding: clamp(36px, 6vw, 110px);
+    }
+
+    .tv-stage:fullscreen .tv-sale-announcement.active,
+    .tv-stage:-webkit-full-screen .tv-sale-announcement.active {
+      display: grid;
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .tv-stage:fullscreen .tv-sale-announcement-card,
+    .tv-stage:-webkit-full-screen .tv-sale-announcement-card {
+      width: min(1180px, 92vw);
+      max-height: 92vh;
     }
     @media (max-width: 720px) {
       .access-grid,
@@ -13465,10 +13490,19 @@
       const dot = event.target.closest('[data-tv-index]');
       if (dot) goToTVSlide(Number(dot.dataset.tvIndex));
     });
-    document.addEventListener('fullscreenchange', () => {
+    document.addEventListener('fullscreenchange', async () => {
       if (tvFullscreenBtn) tvFullscreenBtn.textContent = document.fullscreenElement === tvStage ? 'Sair da tela cheia' : '⛶ Tela cheia';
-      if (isTVVisible()) startTVCarousel();
+      if (document.fullscreenElement === tvStage) await unlockTVAudio();
+      if (tvSaleAnnouncementActive) stopTVCarousel();
+      else if (isTVVisible()) {
+        startTVCarousel();
+        showNextTVSaleAnnouncement();
+      }
       else stopTVCarousel();
+    });
+    document.addEventListener('webkitfullscreenchange', () => {
+      if (tvSaleAnnouncementActive) stopTVCarousel();
+      else if (isTVVisible()) showNextTVSaleAnnouncement();
     });
     document.addEventListener('keydown', event => {
       if (!isTVVisible()) return;
