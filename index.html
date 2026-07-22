@@ -7814,6 +7814,77 @@
     @media (max-width: 1000px) { .network-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 620px) { .network-grid { grid-template-columns: 1fr; } .network-admin-head { display: grid; } }
 
+    /* Ranking TOP 14: ocupa a altura real da TV sem esconder a ultima linha. */
+    @media (max-height: 900px) and (min-width: 1000px) {
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] {
+        padding: 10px 22px 8px;
+      }
+
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-slide-inner {
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 7px;
+        height: 100%;
+      }
+
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-slide-header {
+        min-height: 0;
+        gap: 14px;
+      }
+
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-slide-eyebrow {
+        padding: 5px 11px;
+        font-size: clamp(.58rem, .67vw, .72rem);
+      }
+
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-slide-title {
+        margin: 6px 0 2px;
+        font-size: clamp(1.65rem, 2.6vw, 2.75rem);
+        line-height: .96;
+      }
+
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-slide-subtitle {
+        font-size: clamp(.68rem, .82vw, .86rem);
+        line-height: 1.1;
+      }
+
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-slide-period {
+        max-width: 32%;
+        padding: 7px 10px;
+        font-size: clamp(.62rem, .68vw, .76rem);
+        line-height: 1.2;
+      }
+
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-table-container {
+        height: 100%;
+        min-height: 0;
+      }
+
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-table-ultra-dense {
+        height: 100%;
+      }
+
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-table-ultra-dense th,
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-table-ultra-dense td {
+        padding-top: 2px;
+        padding-bottom: 2px;
+        line-height: 1;
+      }
+
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-table-ultra-dense td.tv-col-goal strong {
+        line-height: 1;
+      }
+
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-table-ultra-dense td.tv-col-goal small {
+        margin-top: 0;
+        line-height: 1;
+      }
+
+      body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-table-ultra-dense .tv-goal-mini-track {
+        height: 3px;
+        margin-top: 1px;
+      }
+    }
+
   </style>
 </head>
 <body class="preview-locked">
