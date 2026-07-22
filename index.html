@@ -8005,6 +8005,61 @@
       border-radius: 999px;
     }
 
+    /* TV rolavel em telas baixas: proporcoes controladas e icones sem ampliacao. */
+    @media (max-height: 900px) and (min-width: 1000px) {
+      body.mode-tv .tv-stage {
+        width: min(100%, 1600px);
+        margin-inline: auto;
+      }
+
+      body.mode-tv .tv-slide:not([data-tv-scene="ranking"]) {
+        padding-inline: clamp(18px, 2vw, 30px);
+      }
+
+      body.mode-tv .tv-card-grid {
+        gap: 12px;
+      }
+
+      body.mode-tv .tv-card-avatar {
+        width: 74px !important;
+        height: 74px !important;
+        flex: 0 0 74px;
+      }
+
+      body.mode-tv .tv-leader-avatar {
+        width: 108px;
+        height: 108px;
+        font-size: 1.75rem;
+      }
+
+      body.mode-tv .tv-footer-mark {
+        width: 34px;
+        height: 34px;
+        font-size: .9rem;
+      }
+
+      body.mode-tv .tv-card-rank b,
+      body.mode-tv .tv-card-rank span {
+        line-height: 1;
+      }
+
+      body.mode-tv .tv-card-rank b {
+        font-size: 1.05rem;
+      }
+
+      body.mode-tv .tv-card-rank span {
+        padding: 5px 8px;
+        font-size: .66rem;
+      }
+
+      body.mode-tv .tv-menu-button,
+      body.mode-tv .tv-settings-toggle {
+        min-height: 36px;
+        padding: 7px 11px;
+        font-size: .76rem;
+      }
+    }
+
   </style>
 </head>
 <body class="preview-locked">
