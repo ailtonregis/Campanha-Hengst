@@ -7911,6 +7911,100 @@
       }
     }
 
+    /* Rolagem da apresentacao: funciona no /live e no fullscreen do painel. */
+    body.mode-tv .tv-slide,
+    .tv-stage:fullscreen .tv-slide,
+    .tv-stage:-webkit-full-screen .tv-slide {
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      scrollbar-gutter: stable;
+      touch-action: pan-y;
+    }
+
+    body.mode-tv .tv-slide::-webkit-scrollbar,
+    .tv-stage:fullscreen .tv-slide::-webkit-scrollbar,
+    .tv-stage:-webkit-full-screen .tv-slide::-webkit-scrollbar {
+      width: 11px;
+    }
+
+    body.mode-tv .tv-slide::-webkit-scrollbar-track,
+    .tv-stage:fullscreen .tv-slide::-webkit-scrollbar-track,
+    .tv-stage:-webkit-full-screen .tv-slide::-webkit-scrollbar-track {
+      background: rgba(255,255,255,.035);
+    }
+
+    body.mode-tv .tv-slide::-webkit-scrollbar-thumb,
+    .tv-stage:fullscreen .tv-slide::-webkit-scrollbar-thumb,
+    .tv-stage:-webkit-full-screen .tv-slide::-webkit-scrollbar-thumb {
+      background: rgba(246,196,0,.72);
+      border: 3px solid rgba(8,12,20,.94);
+      border-radius: 999px;
+    }
+
+    body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-table-container,
+    .tv-stage:fullscreen .tv-slide[data-tv-scene="ranking"] .tv-table-container,
+    .tv-stage:-webkit-full-screen .tv-slide[data-tv-scene="ranking"] .tv-table-container {
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      scrollbar-gutter: stable;
+      touch-action: pan-y;
+    }
+
+    body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-table-container::-webkit-scrollbar,
+    .tv-stage:fullscreen .tv-slide[data-tv-scene="ranking"] .tv-table-container::-webkit-scrollbar,
+    .tv-stage:-webkit-full-screen .tv-slide[data-tv-scene="ranking"] .tv-table-container::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    body.mode-tv .tv-slide[data-tv-scene="ranking"] .tv-table-container::-webkit-scrollbar-thumb,
+    .tv-stage:fullscreen .tv-slide[data-tv-scene="ranking"] .tv-table-container::-webkit-scrollbar-thumb,
+    .tv-stage:-webkit-full-screen .tv-slide[data-tv-scene="ranking"] .tv-table-container::-webkit-scrollbar-thumb {
+      background: var(--yellow);
+      border: 2px solid rgba(8,12,20,.94);
+      border-radius: 999px;
+    }
+
+    /* No acesso /live, a pagina inteira cresce e pode ser rolada para baixo. */
+    body.mode-tv {
+      height: auto;
+      min-height: 100vh;
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+    }
+
+    body.mode-tv .app,
+    body.mode-tv #tab-tv,
+    body.mode-tv .tv-layout,
+    body.mode-tv .tv-stage-shell {
+      height: auto;
+      min-height: 100vh;
+    }
+
+    body.mode-tv .tv-stage {
+      width: 100%;
+      height: max(100vh, 900px);
+      min-height: 900px;
+      max-height: none;
+      aspect-ratio: auto;
+    }
+
+    body.mode-tv::-webkit-scrollbar {
+      width: 12px;
+    }
+
+    body.mode-tv::-webkit-scrollbar-track {
+      background: #05080e;
+    }
+
+    body.mode-tv::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, var(--yellow), #8d7000);
+      border: 3px solid #05080e;
+      border-radius: 999px;
+    }
+
   </style>
 </head>
 <body class="preview-locked">
