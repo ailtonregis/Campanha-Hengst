@@ -12,21 +12,23 @@
   }
 
   function validateBackup(backup) {
-    if (!backup || backup.type !== 'hengst-panel-backup' || Number(backup.version) !== 1) {
+    if (!backup || ![['hengst-panel-backup', 1], ['starke-platform-backup', 2]].some(([type, version]) => backup.type === type && Number(backup.version) === version)) {
       throw new Error('Formato ou versão do backup inválidos.');
     }
-    if (!backup.data || typeof backup.data !== 'object' || !Array.isArray(backup.data.rawRows)) {
+    const legacy = Array.isArray(backup.data?.rawRows);
+    const multibrand = Number(backup.data?.schemaVersion) >= 4 && Array.isArray(backup.data?.campaigns) && backup.data?.campaignData;
+    if (!backup.data || typeof backup.data !== 'object' || (!legacy && !multibrand)) {
       throw new Error('O backup não contém os dados obrigatórios do painel.');
     }
-    if (backup.data.historicalRows && !Array.isArray(backup.data.historicalRows)) {
+    if (legacy && backup.data.historicalRows && !Array.isArray(backup.data.historicalRows)) {
       throw new Error('A base histórica do backup é inválida.');
     }
     return backup;
   }
 
   function validateJacsysSimulation(payload) {
-    if (!payload || payload.type !== 'hengst-jacsys-simulation' || Number(payload.version) !== 1) {
-      throw new Error('O JSON não segue o formato hengst-jacsys-simulation versão 1.');
+    if (!payload || !['hengst-jacsys-simulation', 'starke-campaign-sales-simulation'].includes(payload.type) || Number(payload.version) !== 1) {
+      throw new Error('O JSON não segue o formato de simulação de campanha versão 1.');
     }
     if (!Array.isArray(payload.records) || !payload.records.length) {
       throw new Error('O JSON de simulação não possui registros.');

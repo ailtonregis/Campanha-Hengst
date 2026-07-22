@@ -11,27 +11,27 @@ function checksum(state) {
 }
 
 function validState(state) {
-  return state && typeof state === 'object' && !Array.isArray(state)
-    && Array.isArray(state.rawRows)
-    && (!state.historicalRows || Array.isArray(state.historicalRows));
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return false;
+  if (Array.isArray(state.rawRows)) return !state.historicalRows || Array.isArray(state.historicalRows);
+  return Number(state.schemaVersion) >= 4 && Array.isArray(state.campaigns)
+    && state.campaignData && typeof state.campaignData === 'object';
 }
 
 function validateState(state) {
   if (!validState(state)) throw new Error('O backup não contém um estado válido do Painel Hengst.');
-  if (state.rawRows.length > 50000 || (state.historicalRows?.length || 0) > 50000) {
+  const dataSets = Array.isArray(state.rawRows) ? [state] : Object.values(state.campaignData || {});
+  const currentCount = dataSets.reduce((sum, data) => sum + (data.rawRows?.length || 0), 0);
+  const historicalCount = dataSets.reduce((sum, data) => sum + (data.historicalRows?.length || 0), 0);
+  if (currentCount > 100000 || historicalCount > 100000) {
     throw new Error('O backup excede o limite de 50.000 registros por base.');
   }
-  for (const row of [...state.rawRows, ...(state.historicalRows || [])]) {
+  for (const row of dataSets.flatMap(data => [...(data.rawRows || []), ...(data.historicalRows || [])])) {
     if (!row || typeof row !== 'object' || Array.isArray(row)) throw new Error('O backup contém uma linha inválida.');
     if (!Number.isFinite(Number(row.quantidade || 0)) || !Number.isFinite(Number(row.valor || 0))) {
       throw new Error('O backup contém quantidade ou valor inválido.');
     }
   }
-  for (const key of ['vendorPhotos', 'sellerGoals', 'campaignSettings', 'cardDisplaySettings', 'tvSettings']) {
-    if (state[key] != null && (typeof state[key] !== 'object' || Array.isArray(state[key]))) {
-      throw new Error(`O campo ${key} do backup é inválido.`);
-    }
-  }
+  for (const data of dataSets) for (const key of ['vendorPhotos', 'sellerGoals', 'campaignSettings', 'cardDisplaySettings', 'tvSettings']) if (data[key] != null && (typeof data[key] !== 'object' || Array.isArray(data[key]))) throw new Error(`O campo ${key} do backup é inválido.`);
   if (Buffer.byteLength(JSON.stringify(state), 'utf8') > MAX_STATE_BYTES) {
     throw new Error('O backup ultrapassa o limite de 4 MB.');
   }
@@ -39,8 +39,8 @@ function validateState(state) {
 
 function backupEnvelope(state, createdAt = new Date().toISOString(), source = 'network-snapshot') {
   return {
-    type: 'hengst-panel-backup',
-    version: 1,
+    type: Number(state?.schemaVersion) >= 4 ? 'starke-platform-backup' : 'hengst-panel-backup',
+    version: Number(state?.schemaVersion) >= 4 ? 2 : 1,
     createdAt,
     source,
     checksum: checksum(state),
@@ -120,7 +120,7 @@ module.exports = async function handler(req, res) {
         let reason;
         if (action === 'import') {
           const backup = req.body?.backup;
-          if (!backup || backup.type !== 'hengst-panel-backup' || Number(backup.version) !== 1) {
+          if (!backup || ![['hengst-panel-backup',1],['starke-platform-backup',2]].some(([type, version]) => backup.type === type && Number(backup.version) === version)) {
             return res.status(400).json({ error: 'Formato ou versão do backup inválidos.' });
           }
           replacement = backup.data;

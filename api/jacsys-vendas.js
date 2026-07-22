@@ -47,11 +47,11 @@ function issue(index, type, record, reason, severity = 'error', action = 'discar
   };
 }
 
-function normalizeRecord(input) {
+function normalizeRecord(input, brandName) {
   return {
     nome: text(input.nome),
     filial: text(input.filial),
-    marca: 'HENGST',
+    marca: text(brandName, 120).toUpperCase(),
     quantidade: number(input.quantidade),
     valor: number(input.valor),
     pedido: text(input.pedido),
@@ -87,10 +87,17 @@ module.exports = async function handler(req, res) {
     const payload = req.body?.payload;
     const periodStart = isoDate(req.body?.periodStart);
     const periodEnd = isoDate(req.body?.periodEnd);
-    const brandCode = text(req.body?.brandCode, 80);
+    const campaignId = text(req.body?.campaignId, 120);
+    if (!campaignId) throw new Error('Informe a campanha para a simulação.');
+    const stateRows = await sql`select state from campaign_project_state where id = ${PROJECT_ID} limit 1`;
+    const platform = stateRows[0]?.state || {};
+    const campaign = Array.isArray(platform.campaigns) ? platform.campaigns.find(item => item.id === campaignId || item.slug === campaignId) : null;
+    if (!campaign) throw new Error('Campanha não encontrada ou ainda não migrada para o modelo multimarcas.');
+    const brandName = text(campaign.brandName, 120);
+    const brandCode = text(campaign.brandCode || campaign.dataSource?.brandCode, 80);
     if (!periodStart || !periodEnd || periodStart > periodEnd) throw new Error('Informe um período válido para a simulação.');
-    if (!brandCode) throw new Error('Informe o código interno da marca HENGST.');
-    if (!payload || payload.type !== 'hengst-jacsys-simulation' || Number(payload.version) !== 1) {
+    if (!brandName || !brandCode) throw new Error('A campanha não possui marca e código interno configurados.');
+    if (!payload || !['hengst-jacsys-simulation', 'starke-campaign-sales-simulation'].includes(payload.type) || Number(payload.version) !== 1) {
       throw new Error('O JSON não segue o formato de simulação JACSYS versão 1.');
     }
     if (!Array.isArray(payload.records) || !payload.records.length) throw new Error('A simulação não contém registros.');
@@ -105,14 +112,14 @@ module.exports = async function handler(req, res) {
     let discardedQuantity = 0;
 
     payload.records.forEach((input, index) => {
-      const record = normalizeRecord(input || {});
+      const record = normalizeRecord(input || {}, brandName);
       record.linha = index + 1;
       if (Number.isFinite(record.valor)) grossValue += record.valor;
       if (Number.isFinite(record.quantidade)) grossQuantity += record.quantidade;
       const errors = [];
       if (!record.nome) errors.push(['MISSING_SELLER', 'Registro sem vendedor.']);
       if (!record.filial) errors.push(['MISSING_BRANCH', 'Registro sem filial.']);
-      if (text(input?.marca) && text(input.marca).toUpperCase() !== 'HENGST') errors.push(['BRAND_MISMATCH', 'Registro informado com marca diferente de HENGST.']);
+      if (text(input?.marca) && text(input.marca).toUpperCase() !== brandName.toUpperCase()) errors.push(['BRAND_MISMATCH', `Registro informado com marca diferente de ${brandName}.`]);
       if (!record.documento) errors.push(['MISSING_DOCUMENT', 'Registro sem documento.']);
       if (!record.codigo) errors.push(['MISSING_PRODUCT_CODE', 'Produto sem código.']);
       if (!record.data) errors.push(['INVALID_DATE', 'Data ausente ou inválida.']);
@@ -171,14 +178,15 @@ module.exports = async function handler(req, res) {
         (${PROJECT_ID}, 'JACSYS_SIMULATION', ${periodStart}, ${periodEnd}, ${summary.received},
          ${summary.valid}, ${summary.discarded}, ${summary.validValue}, ${summary.validQuantity},
          ${summary.durationMs}, 'success', 'Simulação JACSYS validada; aguardando aplicação pelo administrador.',
-         ${sql.json({ brand: 'HENGST', brandCode, issues: issues.slice(0, 500), summary })})
+         ${sql.json({ campaignId, brand: brandName, brandCode, issues: issues.slice(0, 500), summary })})
       returning id, created_at::text as created_at
     `;
 
     return res.status(200).json({
       ok: true,
       mode: 'simulation',
-      brand: { name: 'HENGST', internalCode: brandCode },
+      campaignId,
+      brand: { name: brandName, internalCode: brandCode },
       period: { start: periodStart, end: periodEnd },
       records: valid,
       issues: issues.slice(0, 1000),
