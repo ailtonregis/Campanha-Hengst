@@ -3869,6 +3869,23 @@
       transform: scale(1);
     }
 
+    .tv-sale-announcement:popover-open {
+      display: grid;
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
+      max-height: none;
+      margin: 0;
+      border: 0;
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+    }
+
+    .tv-sale-announcement::backdrop { background: #06090f; }
+
     .tv-sale-announcement-card {
       width: min(980px, 92%);
       display: grid;
@@ -8893,7 +8910,7 @@
         <section class="tv-stage-shell">
           <div class="tv-stage" id="tvStage" aria-live="polite">
             <div class="tv-stage-topline"></div>
-            <aside class="tv-sale-announcement" id="tvSaleAnnouncement" aria-live="assertive" aria-hidden="true">
+            <aside class="tv-sale-announcement" id="tvSaleAnnouncement" popover="manual" aria-live="assertive" aria-hidden="true">
               <div class="tv-sale-announcement-card">
                 <span class="tv-sale-announcement-kicker" id="tvAlertKicker">Nova venda registrada</span>
                 <div class="tv-sale-announcement-avatar" id="tvSaleAvatar">ST</div>
@@ -9491,9 +9508,33 @@
       else startTVCarousel();
     }
 
+    function getTVFullscreenElement() {
+      return document.fullscreenElement || document.webkitFullscreenElement || null;
+    }
+
+    function isTVPresentationContext() {
+      return document.body.classList.contains('mode-tv') || getTVFullscreenElement() === tvStage;
+    }
+
+    function openTVAnnouncementLayer() {
+      tvSaleAnnouncement?.classList.add('active');
+      tvSaleAnnouncement?.setAttribute('aria-hidden', 'false');
+      if (typeof tvSaleAnnouncement?.showPopover === 'function' && !tvSaleAnnouncement.matches(':popover-open')) {
+        try { tvSaleAnnouncement.showPopover(); } catch (error) { /* CSS absoluto como fallback. */ }
+      }
+    }
+
+    function closeTVAnnouncementLayer() {
+      if (typeof tvSaleAnnouncement?.hidePopover === 'function' && tvSaleAnnouncement.matches(':popover-open')) {
+        try { tvSaleAnnouncement.hidePopover(); } catch (error) { /* Remove a classe ativa abaixo. */ }
+      }
+      tvSaleAnnouncement?.classList.remove('active');
+      tvSaleAnnouncement?.setAttribute('aria-hidden', 'true');
+    }
+
     function showNextTVSaleAnnouncement() {
       if (tvSaleAnnouncementActive || !tvSaleQueue.length) return;
-      if (!document.body.classList.contains('mode-tv') || document.body.classList.contains('tv-config-open')) return;
+      if (!isTVPresentationContext() || document.body.classList.contains('tv-config-open')) return;
       const sale = tvSaleQueue.shift();
       const photo = getVendorPhoto(sale.nome);
       const updatedRows = getTVRows();
@@ -9515,14 +9556,12 @@
       if (tvSaleAvatar) tvSaleAvatar.innerHTML = photo
         ? `<img src="${photo}" alt="Foto de ${escapeHtml(sale.nome)}">`
         : escapeHtml(getInitials(sale.nome));
-      tvSaleAnnouncement?.classList.add('active');
-      tvSaleAnnouncement?.setAttribute('aria-hidden', 'false');
+      openTVAnnouncementLayer();
       if (sale.alertSound !== false) playTVSaleSound();
       triggerConfetti(46);
       clearTimeout(tvSaleAnnouncementTimer);
       tvSaleAnnouncementTimer = window.setTimeout(() => {
-        tvSaleAnnouncement?.classList.remove('active');
-        tvSaleAnnouncement?.setAttribute('aria-hidden', 'true');
+        closeTVAnnouncementLayer();
         tvSaleAnnouncementActive = false;
         if (tvSaleQueue.length) {
           window.setTimeout(showNextTVSaleAnnouncement, 500);
@@ -9533,7 +9572,7 @@
     }
 
     function queueTVSaleAnnouncements(sales) {
-      if (!Array.isArray(sales) || !sales.length || !document.body.classList.contains('mode-tv')) return;
+      if (!Array.isArray(sales) || !sales.length || !isTVPresentationContext()) return;
       tvSaleQueue.push(...sales);
       showNextTVSaleAnnouncement();
     }
@@ -11125,8 +11164,11 @@
 
     async function toggleTVFullscreen() {
       try {
-        if (document.fullscreenElement === tvStage) await document.exitFullscreen();
-        else if (tvStage?.requestFullscreen) await tvStage.requestFullscreen();
+        if (getTVFullscreenElement() === tvStage) {
+          if (document.exitFullscreen) await document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        } else if (tvStage?.requestFullscreen) await tvStage.requestFullscreen();
+        else if (tvStage?.webkitRequestFullscreen) tvStage.webkitRequestFullscreen();
       } catch (error) {
         console.error(error);
         showToast('Tela cheia indisponível', 'O navegador não permitiu iniciar o modo tela cheia.');
@@ -13491,8 +13533,9 @@
       if (dot) goToTVSlide(Number(dot.dataset.tvIndex));
     });
     document.addEventListener('fullscreenchange', async () => {
-      if (tvFullscreenBtn) tvFullscreenBtn.textContent = document.fullscreenElement === tvStage ? 'Sair da tela cheia' : '⛶ Tela cheia';
-      if (document.fullscreenElement === tvStage) await unlockTVAudio();
+      if (tvFullscreenBtn) tvFullscreenBtn.textContent = getTVFullscreenElement() === tvStage ? 'Sair da tela cheia' : '⛶ Tela cheia';
+      if (getTVFullscreenElement() === tvStage) await unlockTVAudio();
+      if (tvSaleAnnouncementActive) window.setTimeout(openTVAnnouncementLayer, 50);
       if (tvSaleAnnouncementActive) stopTVCarousel();
       else if (isTVVisible()) {
         startTVCarousel();
@@ -13501,6 +13544,7 @@
       else stopTVCarousel();
     });
     document.addEventListener('webkitfullscreenchange', () => {
+      if (tvSaleAnnouncementActive) window.setTimeout(openTVAnnouncementLayer, 50);
       if (tvSaleAnnouncementActive) stopTVCarousel();
       else if (isTVVisible()) showNextTVSaleAnnouncement();
     });
@@ -13508,6 +13552,10 @@
       if (!isTVVisible()) return;
       if (event.key === 'ArrowRight') nextTVSlide();
       if (event.key === 'ArrowLeft') previousTVSlide();
+      if (event.key.toLowerCase() === 'n' && getTVFullscreenElement() === tvStage) {
+        const sale = getLastTVSaleForTest();
+        if (sale) queueTVSaleAnnouncements([sale]);
+      }
       if (event.key === ' ') {
         event.preventDefault();
         toggleTVPause();
