@@ -8,6 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <link rel="stylesheet" href="/src/css/tv-phase3.css">
+  <link rel="stylesheet" href="/src/css/phase4-management.css">
   <style>
     :root {
       --bg: #080a0f;
@@ -8765,6 +8766,7 @@
           <div class="network-grid" id="jacsysQualityStats"></div>
           <div class="audit-table-wrap"><table class="audit-table"><thead><tr><th>Tipo</th><th>Documento</th><th>Vendedor</th><th>Filial</th><th>Produto</th><th>Valor</th><th>Motivo</th></tr></thead><tbody id="jacsysIssuesBody"><tr><td colspan="7">Nenhuma simulação validada.</td></tr></tbody></table></div>
         </section>
+        <section class="phase4-root" id="phase4Root" aria-label="Recursos gerenciais avançados"></section>
       </main>
     </section>
 
@@ -8911,6 +8913,7 @@
 
   <script src="/src/js/network-tools.js"></script>
   <script src="/src/js/tv-phase3.js"></script>
+  <script src="/src/js/phase4-management.js"></script>
   <script>
     const loginScreen = document.getElementById('loginScreen');
     const startScreen = document.getElementById('startScreen');
@@ -9027,6 +9030,7 @@
     const exportBranchRankingBtn = document.getElementById('exportBranchRankingBtn');
     const exportClientRankingBtn = document.getElementById('exportClientRankingBtn');
     const branchRankingBody = document.getElementById('branchRankingBody');
+    const phase4Root = document.getElementById('phase4Root');
     const clientRankingBody = document.getElementById('clientRankingBody');
     const branchRankingInfo = document.getElementById('branchRankingInfo');
     const clientRankingInfo = document.getElementById('clientRankingInfo');
@@ -11354,6 +11358,20 @@
       if (exportBranchRankingBtn) exportBranchRankingBtn.disabled = disabled;
       if (exportClientRankingBtn) exportClientRankingBtn.disabled = disabled || !rankings.clientRows.length;
       updateDailyGoalKPI();
+      if (phase4Root && window.HengstPhase4) {
+        const phase4Goals = {};
+        consolidateRankingRows(getAnalyticsBaseRows(), false).forEach(row => { phase4Goals[normalizeText(row.nome)] = getSellerGoal(row.nome); });
+        window.HengstPhase4.render(phase4Root, {
+          rows: getAnalyticsBaseRows(),
+          historicalRows,
+          goal: campaignSettings.goal,
+          goals: phase4Goals,
+          cloudUpdatedAt,
+          tvSettings,
+          lastError: tvLastError,
+          logs: networkUpdateHistory
+        });
+      }
     }
 
     function exportBranchRankingCSV() {
