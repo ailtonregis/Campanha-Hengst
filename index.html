@@ -7,6 +7,7 @@
   <title>Plataforma de Resultados, Ranking e TV Indoor</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <link rel="stylesheet" href="/src/css/tv-phase3.css">
   <style>
     :root {
       --bg: #080a0f;
@@ -8840,6 +8841,16 @@
             </div>
           </div>
 
+          <section class="tv-editor-panel" aria-labelledby="tvEditorTitle">
+            <div class="tv-editor-titlebar">
+              <div><h3 id="tvEditorTitle">Editor da TV Indoor</h3><p>Ative, ordene, duplique e configure cada cena. A duração permitida é de 5 a 120 segundos.</p></div>
+              <div class="tv-editor-toolbar"><button class="secondary" id="tvEditorCancelBtn" type="button">Cancelar alterações</button><button class="secondary" id="tvEditorDefaultsBtn" type="button">Restaurar padrão</button></div>
+            </div>
+            <div class="tv-editor-list" id="tvSceneEditor"></div>
+            <div class="tv-editor-titlebar" style="margin-top:18px"><div><h3>Alertas automáticos</h3><p>Controle repetição, prioridade, duração e som dos eventos da campanha.</p></div></div>
+            <div class="tv-alert-editor" id="tvAlertEditor"></div>
+          </section>
+
           <div class="tv-control-actions">
             <button id="tvApplyBtn" type="button">Atualizar transmissão</button>
             <button class="secondary" id="tvTestLastSaleBtn" type="button">🔔 Testar última venda</button>
@@ -8847,6 +8858,7 @@
             <button class="secondary" id="tvPauseBtn" type="button">Pausar</button>
             <button class="secondary" id="tvNextBtn" type="button">Próxima ▶</button>
             <button id="tvFullscreenBtn" type="button">⛶ Tela cheia</button>
+            <button class="secondary" id="tvRestartBtn" type="button">Reiniciar</button>
           </div>
           <p class="tv-control-note" id="tvControlNote">A TV utiliza os mesmos filtros aplicados na aba Campanha de Vendas. O crescimento histórico permanece apenas como referência. A cena “Qtd. por vendedor” exibe os vendedores ordenados pela quantidade de produtos HENGST vendidos.</p>
         </section>
@@ -8856,7 +8868,7 @@
             <div class="tv-stage-topline"></div>
             <aside class="tv-sale-announcement" id="tvSaleAnnouncement" aria-live="assertive" aria-hidden="true">
               <div class="tv-sale-announcement-card">
-                <span class="tv-sale-announcement-kicker">Nova venda registrada</span>
+                <span class="tv-sale-announcement-kicker" id="tvAlertKicker">Nova venda registrada</span>
                 <div class="tv-sale-announcement-avatar" id="tvSaleAvatar">ST</div>
                 <h2 id="tvSaleSeller">Vendedor</h2>
                 <strong class="tv-sale-announcement-value" id="tvSaleValue">R$ 0,00</strong>
@@ -8883,7 +8895,9 @@
               </div>
             </footer>
             <div class="tv-timer-track"><span id="tvTimerBar"></span></div>
+            <div class="tv-valid-state" id="tvValidState">Aguardando estado válido da nuvem</div>
           </div>
+          <div class="tv-preview-status"><span id="tvPreviewScene">Cena: -</span><span id="tvPreviewPosition">Posição: -</span><span id="tvPreviewRemaining">Tempo restante: -</span></div>
         </section>
       </main>
     </section>
@@ -8896,6 +8910,7 @@
   </div>
 
   <script src="/src/js/network-tools.js"></script>
+  <script src="/src/js/tv-phase3.js"></script>
   <script>
     const loginScreen = document.getElementById('loginScreen');
     const startScreen = document.getElementById('startScreen');
@@ -9126,6 +9141,7 @@
     const tvStage = document.getElementById('tvStage');
     const tvSlides = document.getElementById('tvSlides');
     const tvSaleAnnouncement = document.getElementById('tvSaleAnnouncement');
+    const tvAlertKicker = document.getElementById('tvAlertKicker');
     const tvSaleAvatar = document.getElementById('tvSaleAvatar');
     const tvSaleSeller = document.getElementById('tvSaleSeller');
     const tvSaleValue = document.getElementById('tvSaleValue');
@@ -9134,6 +9150,15 @@
     const tvClock = document.getElementById('tvClock');
     const tvDate = document.getElementById('tvDate');
     const tvTimerBar = document.getElementById('tvTimerBar');
+    const tvSceneEditor = document.getElementById('tvSceneEditor');
+    const tvAlertEditor = document.getElementById('tvAlertEditor');
+    const tvEditorCancelBtn = document.getElementById('tvEditorCancelBtn');
+    const tvEditorDefaultsBtn = document.getElementById('tvEditorDefaultsBtn');
+    const tvRestartBtn = document.getElementById('tvRestartBtn');
+    const tvValidState = document.getElementById('tvValidState');
+    const tvPreviewScene = document.getElementById('tvPreviewScene');
+    const tvPreviewPosition = document.getElementById('tvPreviewPosition');
+    const tvPreviewRemaining = document.getElementById('tvPreviewRemaining');
     const createSnapshotBtn = document.getElementById('createSnapshotBtn');
     const exportBackupBtn = document.getElementById('exportBackupBtn');
     const backupFileInput = document.getElementById('backupFileInput');
@@ -9202,6 +9227,15 @@
       participants: null
     };
     let tvSettings = normalizeTVSettings(loadStoredObject('vendasTVIndoorSettings', DEFAULT_TV_SETTINGS));
+    let tvSceneEditorController = null;
+    let tvSceneStartedAt = 0;
+    let tvRemainingTimer = null;
+    let tvLastValidAt = null;
+    let tvLastValidState = null;
+    let tvLastError = null;
+    let tvPreviousRankingSnapshot = [];
+    let tvPreviewOverrideScene = null;
+    let tvSyncChannel = null;
     let tvSlideIndex = 0;
     let tvTimer = null;
     let tvClockTimer = null;
@@ -9313,7 +9347,7 @@
     }
 
     function getCloudState() {
-      return { version: 2, rawRows, historicalRows, vendorPhotos, sellerGoals, campaignSettings, cardDisplaySettings, tvSettings, effectsEnabled };
+      return { version: 3, rawRows, historicalRows, vendorPhotos, sellerGoals, campaignSettings, cardDisplaySettings, tvSettings, effectsEnabled };
     }
 
     function scheduleCloudSave(delay = 700) {
@@ -9353,6 +9387,7 @@
       if (!response.ok) throw new Error(result.error || 'Não foi possível salvar os dados compartilhados.');
       cloudStateExists = true;
       cloudUpdatedAt = result.updatedAt || cloudUpdatedAt;
+      tvSyncChannel?.postMessage({ type: 'tv-settings-updated', updatedAt: cloudUpdatedAt });
       return result;
     }
 
@@ -9436,11 +9471,14 @@
       const position = updatedRows.findIndex(row => normalizeText(row.nome) === normalizeText(sale.nome));
       tvSaleAnnouncementActive = true;
       stopTVCarousel();
-      if (tvSaleSeller) tvSaleSeller.textContent = sale.nome;
+      if (tvAlertKicker) tvAlertKicker.textContent = sale.alertTitle ? 'Alerta automático da campanha' : 'Nova venda registrada';
+      if (tvSaleSeller) tvSaleSeller.textContent = sale.alertTitle || sale.nome;
       if (tvSaleValue) tvSaleValue.textContent = sale.valorVenda > 0.009
         ? `+ ${moneyFormatter.format(sale.valorVenda)}`
         : `+ ${numberFormatter.format(sale.quantidadeVenda)} item(ns)`;
-      if (tvSaleMeta) {
+      if (tvSaleMeta && sale.alertMessage) {
+        tvSaleMeta.textContent = sale.alertMessage;
+      } else if (tvSaleMeta) {
         const quantity = sale.quantidadeVenda > 0 ? `${numberFormatter.format(sale.quantidadeVenda)} item(ns)` : 'Venda confirmada';
         const rank = position >= 0 ? `Agora em ${position + 1}º lugar` : 'Ranking atualizado';
         tvSaleMeta.textContent = `${quantity} · ${sale.filial || 'Stärke Parts'} · ${rank}`;
@@ -9450,7 +9488,7 @@
         : escapeHtml(getInitials(sale.nome));
       tvSaleAnnouncement?.classList.add('active');
       tvSaleAnnouncement?.setAttribute('aria-hidden', 'false');
-      playTVSaleSound();
+      if (sale.alertSound !== false) playTVSaleSound();
       triggerConfetti(46);
       clearTimeout(tvSaleAnnouncementTimer);
       tvSaleAnnouncementTimer = window.setTimeout(() => {
@@ -9462,13 +9500,38 @@
         } else {
           goToTVRankingAfterSale();
         }
-      }, 5500);
+      }, Math.max(5, Math.min(30, Number(sale.alertDuration || 5.5))) * 1000);
     }
 
     function queueTVSaleAnnouncements(sales) {
       if (!Array.isArray(sales) || !sales.length || !document.body.classList.contains('mode-tv')) return;
       tvSaleQueue.push(...sales);
       showNextTVSaleAnnouncement();
+    }
+
+    function queueTVAutomaticAlert(alertId, title, message, seller = '') {
+      const config = tvSettings.alerts?.find(alert => alert.id === alertId && alert.ativo);
+      if (!config) return;
+      const last = Number(tvSettings.alertHistory?.[alertId] || 0);
+      if (Date.now() - last < Number(config.intervaloMinimo || 300) * 1000) return;
+      tvSettings.alertHistory = { ...(tvSettings.alertHistory || {}), [alertId]: Date.now() };
+      tvSaleQueue.push({ nome: seller || title, alertTitle: title, alertMessage: message, valorVenda: 0, quantidadeVenda: 0, alertDuration: config.duracao, alertSound: config.som });
+      showNextTVSaleAnnouncement();
+    }
+
+    function evaluateTVAutomaticAlerts(previousRows, currentRows) {
+      if (!previousRows?.length || !currentRows?.length) return;
+      const oldNames = previousRows.map(row => normalizeText(row.nome));
+      const newNames = currentRows.map(row => normalizeText(row.nome));
+      if (oldNames[0] !== newNames[0]) queueTVAutomaticAlert('new-leader', 'Novo líder da campanha', `${currentRows[0].nome} assumiu a 1ª posição.`, currentRows[0].nome);
+      if (oldNames.slice(0, 3).join('|') !== newNames.slice(0, 3).join('|')) queueTVAutomaticAlert('podium-change', 'Pódio atualizado', 'A classificação do TOP 3 mudou. Confira o novo ranking.');
+      currentRows.slice(0, 3).forEach(row => { if (!oldNames.slice(0, 3).includes(normalizeText(row.nome))) queueTVAutomaticAlert('top-3', 'Entrada no TOP 3', `${row.nome} entrou na zona de pódio.`, row.nome); });
+      currentRows.slice(0, 12).forEach(row => { if (!oldNames.slice(0, 12).includes(normalizeText(row.nome))) queueTVAutomaticAlert('top-12', 'Entrada no TOP 12', `${row.nome} entrou no TOP 12.`, row.nome); });
+      currentRows.forEach(row => { const goal = getSellerGoal(row.nome); const old = previousRows.find(item => normalizeText(item.nome) === normalizeText(row.nome)); if (goal > 0 && row.valor >= goal && (!old || old.valor < goal)) queueTVAutomaticAlert('individual-goal', 'Meta individual atingida', `${row.nome} alcançou sua meta individual.`, row.nome); });
+      const total = currentRows.reduce((sum, row) => sum + Number(row.valor || 0), 0);
+      const oldTotal = previousRows.reduce((sum, row) => sum + Number(row.valor || 0), 0);
+      const goal = Number(campaignSettings.goal || 0);
+      if (goal > 0) [25, 50, 75, 100].forEach(percent => { if (oldTotal / goal * 100 < percent && total / goal * 100 >= percent) queueTVAutomaticAlert(`campaign-${percent}`, percent === 100 ? 'Meta geral atingida' : `Campanha em ${percent}%`, percent === 100 ? 'A campanha alcançou a meta geral.' : `A campanha atingiu ${percent}% da meta.`); });
     }
 
     function getLastTVSaleForTest() {
@@ -9491,7 +9554,11 @@
     }
 
     function applyCloudState(state) {
-      if (!state || typeof state !== 'object') return;
+      if (!state || typeof state !== 'object' || !Array.isArray(state.rawRows)) {
+        tvLastError = { at: new Date().toISOString(), message: 'Estado de nuvem inválido; último estado preservado.' };
+        return false;
+      }
+      const previousTVRows = document.body.classList.contains('mode-tv') ? getTVRows().map(row => ({ ...row })) : [];
       cloudApplyingState = true;
       cloudStateVersion = Number(state.version || 1);
       rawRows = Array.isArray(state.rawRows) ? state.rawRows : [];
@@ -9519,8 +9586,13 @@
       renderHistory();
       renderAnalytics();
       renderTV();
+      if (previousTVRows.length) evaluateTVAutomaticAlerts(previousTVRows, getTVRows());
       updateSystemSummary();
+      tvLastValidAt = cloudUpdatedAt || new Date().toISOString();
+      tvLastValidState = window.HengstTVPhase3.clone(state);
+      tvLastError = null;
       cloudApplyingState = false;
+      return true;
     }
 
     async function loadCloudState({ quiet = false } = {}) {
@@ -9552,6 +9624,8 @@
         return true;
       } catch (error) {
         cloudLoadCompleted = false;
+        tvLastError = { at: new Date().toISOString(), message: error.message };
+        if (tvValidState && tvLastValidAt) tvValidState.textContent = `Última atualização válida: ${new Date(tvLastValidAt).toLocaleString('pt-BR')} · conexão temporariamente indisponível`;
         console.error(error);
         if (!quiet) showToast('Nuvem indisponível', error.message);
         return false;
@@ -10491,21 +10565,46 @@
     }
 
     function normalizeTVSettings(settings = {}) {
-      const allowedScenes = ['summary', 'cards', 'ranking', 'growth', 'products'];
-      const baseScenes = Array.isArray(settings.scenes)
-        ? settings.scenes.filter(scene => allowedScenes.includes(scene))
-        : [...DEFAULT_TV_SETTINGS.scenes];
-      const scenes = baseScenes.length ? [...baseScenes] : ['summary'];
-      if (!scenes.includes('products')) scenes.push('products');
-      return {
-        interval: [8, 12, 15, 20, 30].includes(Number(settings.interval)) ? Number(settings.interval) : 12,
-        rows: [5, 8, 10, 12, 14].includes(Number(settings.rows)) ? Number(settings.rows) : 8,
-        metric: settings.metric === 'quantidade' ? 'quantidade' : 'valor',
-        scenes,
-        participants: Array.isArray(settings.participants)
-          ? [...new Set(settings.participants.map(value => String(value || '').trim()).filter(Boolean))]
-          : null
-      };
+      return window.HengstTVPhase3.normalizeSettings(settings);
+    }
+
+    function getActiveTVScenes() {
+      if (tvPreviewOverrideScene) return [{ ...tvPreviewOverrideScene, ativa: true, ordem: 1 }];
+      return window.HengstTVPhase3.activeScenes(tvSettings);
+    }
+
+    function mountTVSceneEditor() {
+      tvSceneEditorController = window.HengstTVPhase3.mountEditor(tvSceneEditor, tvSettings, scene => {
+        tvPreviewOverrideScene = window.HengstTVPhase3.clone(scene);
+        renderTV();
+        goToTVSlide(0);
+        tvStage?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+
+    function renderTVAlertEditor(alerts = tvSettings.alerts) {
+      if (!tvAlertEditor) return;
+      tvAlertEditor.innerHTML = alerts.map((alert, index) => `
+        <article class="tv-alert-row" data-alert-index="${index}">
+          <label class="tv-editor-toggle"><input type="checkbox" data-alert-field="ativo" ${alert.ativo ? 'checked' : ''}><span>${escapeHtml(alert.nome)}</span></label>
+          <label>Duração (s)<input type="number" min="5" max="30" data-alert-field="duracao" value="${alert.duracao}"></label>
+          <label>Intervalo mínimo (s)<input type="number" min="30" max="86400" data-alert-field="intervaloMinimo" value="${alert.intervaloMinimo}"></label>
+          <label>Prioridade<select data-alert-field="prioridade">${[1,2,3,4,5].map(value => `<option value="${value}" ${Number(alert.prioridade) === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label>
+          <label class="tv-editor-toggle"><input type="checkbox" data-alert-field="som" ${alert.som ? 'checked' : ''}><span>Som</span></label>
+        </article>`).join('');
+    }
+
+    function readTVAlerts() {
+      if (!tvAlertEditor) return tvSettings.alerts;
+      const alerts = window.HengstTVPhase3.clone(tvSettings.alerts);
+      tvAlertEditor.querySelectorAll('[data-alert-index]').forEach(row => {
+        const alert = alerts[Number(row.dataset.alertIndex)];
+        row.querySelectorAll('[data-alert-field]').forEach(input => {
+          const field = input.dataset.alertField;
+          alert[field] = input.type === 'checkbox' ? input.checked : Number(input.value);
+        });
+      });
+      return window.HengstTVPhase3.normalizeAlerts(alerts);
     }
 
     function syncTVParticipantControls() {
@@ -10526,23 +10625,27 @@
       tvIntervalSelect.value = String(tvSettings.interval);
       tvRowsSelect.value = String(tvSettings.rows);
       tvMetricSelect.value = tvSettings.metric;
-      const selected = new Set(tvSettings.scenes);
+      const selected = new Set(getActiveTVScenes().map(scene => scene.type));
       tvSceneOptions?.querySelectorAll('input[type="checkbox"]').forEach(input => {
         input.checked = selected.has(input.value);
       });
       syncTVParticipantControls();
+      mountTVSceneEditor();
+      renderTVAlertEditor();
       updateTVPauseButton();
     }
 
     function readTVControls() {
-      const scenes = tvSceneOptions
-        ? [...tvSceneOptions.querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value)
-        : [...DEFAULT_TV_SETTINGS.scenes];
+      const scenes = tvSceneEditorController
+        ? tvSceneEditorController.getScenes()
+        : window.HengstTVPhase3.normalizeScenes(DEFAULT_TV_SETTINGS.scenes);
       return normalizeTVSettings({
         interval: Number(tvIntervalSelect?.value || 12),
         rows: Number(tvRowsSelect?.value || 8),
         metric: tvMetricSelect?.value || 'valor',
         scenes,
+        alerts: readTVAlerts(),
+        alertHistory: tvSettings.alertHistory,
         participants: tvParticipantChecklist
           ? [...getCheckedValues(tvParticipantChecklist)]
           : tvSettings.participants
@@ -10827,17 +10930,35 @@
         growth: () => buildTVGrowthSlide(rows, periodLabel),
         products: () => buildTVProductsSlide(periodLabel)
       };
-      const slideMarkup = tvSettings.scenes.map(scene => {
+      const activeScenes = getActiveTVScenes();
+      const originalRows = tvSettings.rows;
+      const originalMetric = tvSettings.metric;
+      const slideMarkup = activeScenes.map(scene => {
         try {
-          return slideBuilders[scene]?.() || '';
+          tvSettings.rows = scene.quantidadeExibida;
+          tvSettings.metric = scene.metrica;
+          const markup = slideBuilders[scene.type]?.() || '';
+          return markup.replace('class="tv-slide', `data-scene-id="${escapeHtml(scene.id)}" data-animation="${escapeHtml(scene.animacao)}" class="tv-slide${scene.modo === 'compacto' ? ' is-compact' : ''}`);
         } catch (error) {
-          console.error(`Falha ao montar a cena TV “${scene}”:`, error);
+          tvLastError = { at: new Date().toISOString(), message: error.message, scene: scene.id };
+          console.error(`Falha ao montar a cena TV “${scene.id}”:`, error);
           return '';
         }
       }).filter(Boolean);
+      tvSettings.rows = originalRows;
+      tvSettings.metric = originalMetric;
       tvSlides.innerHTML = slideMarkup.length
         ? slideMarkup.join('')
-        : `<article class="tv-slide active"><div class="tv-empty-state"><b>Nenhuma cena selecionada</b><span>Ative pelo menos uma cena nos controles da TV.</span></div></article>`;
+        : rows.length
+          ? `<article class="tv-slide active"><div class="tv-empty-state"><b>Nenhuma cena ativa</b><span>Ative uma cena no Editor da TV Indoor.</span></div></article>`
+          : `<article class="tv-slide active"><div class="tv-contingency"><div><strong>Campanha HENGST</strong><p>Nenhum dado válido disponível no momento.</p><small>Última tentativa: ${new Date().toLocaleString('pt-BR')}</small></div></div></article>`;
+      [...tvSlides.querySelectorAll('.tv-slide')].forEach((slide, index) => {
+        const scene = activeScenes[index];
+        if (!scene) return;
+        const title = slide.querySelector('.tv-slide-title');
+        if (title && scene.titulo) title.textContent = scene.titulo;
+        ['mostrarPosicao','mostrarFoto','mostrarMeta','mostrarCrescimento','mostrarFilial','mostrarQuantidade','mostrarValor','mostrarParticipacao'].forEach(field => slide.classList.toggle(`hide-${field.replace('mostrar','').toLowerCase()}`, scene[field] === false));
+      });
       tvSlideCount = tvSlides.querySelectorAll('.tv-slide').length;
       tvSlideIndex = Math.min(tvSlideIndex, Math.max(0, tvSlideCount - 1));
       tvSlideDots.innerHTML = Array.from({ length: tvSlideCount }, (_, index) => `<button class="tv-slide-dot${index === tvSlideIndex ? ' active' : ''}" type="button" data-tv-index="${index}" aria-label="Abrir cena ${index + 1}"></button>`).join('');
@@ -10845,8 +10966,26 @@
       const participantLabel = tvSettings.participants === null
         ? 'todos os participantes'
         : `${tvSettings.participants.length} participante(s) selecionado(s)`;
-      tvControlNote.textContent = `${rows.length} vendedor(es) exibidos de ${participantLabel} · TOP ${tvSettings.rows} · ${tvSlideCount} cena(s) · troca automática a cada ${tvSettings.interval} segundos.`;
+      tvControlNote.textContent = `${rows.length} vendedor(es) exibidos de ${participantLabel} · ${tvSlideCount} cena(s) ativas · cada cena respeita sua duração individual.`;
+      if (tvValidState) tvValidState.textContent = tvLastValidAt ? `Última atualização válida: ${new Date(tvLastValidAt).toLocaleString('pt-BR')}` : 'Aguardando estado válido da nuvem';
       if (isTVVisible() && !tvSaleAnnouncementActive) startTVCarousel();
+    }
+
+    function getCurrentTVScene() {
+      return getActiveTVScenes()[tvSlideIndex] || null;
+    }
+
+    function getCurrentTVSceneDuration() {
+      return Math.max(5, Math.min(120, Number(getCurrentTVScene()?.duracao || tvSettings.interval || 12)));
+    }
+
+    function updateTVPreviewStatus() {
+      const scene = getCurrentTVScene();
+      const duration = getCurrentTVSceneDuration();
+      const elapsed = tvSceneStartedAt ? (Date.now() - tvSceneStartedAt) / 1000 : 0;
+      if (tvPreviewScene) tvPreviewScene.textContent = `Cena: ${scene?.titulo || scene?.nome || 'Contingência'}`;
+      if (tvPreviewPosition) tvPreviewPosition.textContent = `Posição: ${Math.min(tvSlideIndex + 1, tvSlideCount)} de ${tvSlideCount}`;
+      if (tvPreviewRemaining) tvPreviewRemaining.textContent = `Tempo restante: ${tvPaused ? 'pausado' : `${Math.max(0, Math.ceil(duration - elapsed))} s`}`;
     }
 
     function isTVVisible() {
@@ -10859,7 +10998,7 @@
       tvTimerBar.style.width = tvPaused || tvSlideCount <= 1 ? '0' : '0';
       void tvTimerBar.offsetWidth;
       if (!tvPaused && tvSlideCount > 1 && isTVVisible()) {
-        tvTimerBar.style.animation = `tvTimerFill ${tvSettings.interval}s linear forwards`;
+        tvTimerBar.style.animation = `tvTimerFill ${getCurrentTVSceneDuration()}s linear forwards`;
       }
     }
 
@@ -10868,8 +11007,10 @@
       const slides = [...tvSlides.querySelectorAll('.tv-slide')];
       if (!slides.length) return;
       tvSlideIndex = ((Number(index) % slides.length) + slides.length) % slides.length;
+      tvSceneStartedAt = Date.now();
       slides.forEach((slide, slideIndex) => slide.classList.toggle('active', slideIndex === tvSlideIndex));
       tvSlideDots?.querySelectorAll('.tv-slide-dot').forEach((dot, dotIndex) => dot.classList.toggle('active', dotIndex === tvSlideIndex));
+      updateTVPreviewStatus();
       if (restartTimer) startTVCarousel();
       else restartTVTimerBar();
     }
@@ -10891,7 +11032,7 @@
       tvTimer = window.setTimeout(() => {
         tvTimer = null;
         nextTVSlide();
-      }, tvSettings.interval * 1000);
+      }, getCurrentTVSceneDuration() * 1000);
       restartTVTimerBar();
     }
 
@@ -13168,7 +13309,8 @@
       showToast('Foto removida', `A foto de ${selectedSeller} foi removida do ranking.`);
     });
 
-    tvApplyBtn?.addEventListener('click', () => {
+    tvApplyBtn?.addEventListener('click', async () => {
+      tvPreviewOverrideScene = null;
       tvSettings = readTVControls();
       storeObject('vendasTVIndoorSettings', tvSettings);
       tvSlideIndex = 0;
@@ -13178,6 +13320,28 @@
       showNextTVSaleAnnouncement();
       markUpdated('Transmissão da TV Indoor atualizada.');
       showToast('TV Indoor atualizada', `${tvSlideCount} cena(s) prontas para transmissão.`);
+      if (cloudCanWrite) {
+        try { await saveCloudState(); }
+        catch (error) { showToast('Configuração aplicada nesta tela', `Falha ao compartilhar na nuvem: ${error.message}`); }
+      }
+    });
+    tvEditorCancelBtn?.addEventListener('click', () => {
+      tvPreviewOverrideScene = null;
+      tvSceneEditorController?.reset(tvSettings.scenes);
+      renderTVAlertEditor();
+      renderTV();
+      showToast('Alterações canceladas', 'O editor voltou à última configuração salva.');
+    });
+    tvEditorDefaultsBtn?.addEventListener('click', () => {
+      tvPreviewOverrideScene = null;
+      tvSceneEditorController?.reset(window.HengstTVPhase3.DEFAULT_SCENES);
+      renderTVAlertEditor(window.HengstTVPhase3.DEFAULT_ALERTS);
+      showToast('Configuração padrão restaurada', 'Clique em Atualizar transmissão para confirmar.');
+    });
+    tvRestartBtn?.addEventListener('click', () => {
+      tvPaused = false;
+      updateTVPauseButton();
+      goToTVSlide(0);
     });
     tvTestLastSaleBtn?.addEventListener('click', async () => {
       const sale = getLastTVSaleForTest();
@@ -13628,6 +13792,14 @@
     syncTVControls();
     updateTVClock();
     tvClockTimer = window.setInterval(updateTVClock, 1000);
+    tvRemainingTimer = window.setInterval(() => {
+      if (isTVVisible()) updateTVPreviewStatus();
+    }, 1000);
+    tvSyncChannel = window.HengstTVPhase3.createSyncChannel(message => {
+      if (['tv-settings-updated', 'scenes-updated', 'data-updated', 'backup-restored'].includes(message?.type)) {
+        loadCloudState({ quiet: true });
+      }
+    });
     updateAllFilterOptions();
     loadCampaignForm();
     if (historicalRows.length) {
