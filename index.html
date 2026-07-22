@@ -10595,7 +10595,39 @@
           <label>Intervalo mínimo (s)<input type="number" min="30" max="86400" data-alert-field="intervaloMinimo" value="${alert.intervaloMinimo}"></label>
           <label>Prioridade<select data-alert-field="prioridade">${[1,2,3,4,5].map(value => `<option value="${value}" ${Number(alert.prioridade) === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label>
           <label class="tv-editor-toggle"><input type="checkbox" data-alert-field="som" ${alert.som ? 'checked' : ''}><span>Som</span></label>
+          <button class="secondary tv-alert-test-btn" type="button" data-test-alert="${index}">🔔 Testar</button>
         </article>`).join('');
+    }
+
+    const TV_ALERT_TEST_MESSAGES = {
+      'new-leader': ['Novo líder da campanha', 'Vendedor de teste assumiu a 1ª posição.'],
+      'podium-change': ['Pódio atualizado', 'A classificação do TOP 3 foi alterada.'],
+      'top-3': ['Entrada no TOP 3', 'Vendedor de teste entrou na zona de pódio.'],
+      'top-12': ['Entrada no TOP 12', 'Vendedor de teste entrou no TOP 12.'],
+      'individual-goal': ['Meta individual atingida', 'Vendedor de teste alcançou sua meta individual.'],
+      'campaign-25': ['Campanha em 25%', 'A campanha atingiu 25% da meta geral.'],
+      'campaign-50': ['Campanha em 50%', 'A campanha atingiu 50% da meta geral.'],
+      'campaign-75': ['Campanha em 75%', 'A campanha atingiu 75% da meta geral.'],
+      'campaign-100': ['Meta geral atingida', 'A campanha alcançou 100% da meta geral.']
+    };
+
+    async function testTVAlert(index) {
+      const alert = readTVAlerts()[Number(index)];
+      if (!alert) return;
+      const [title, message] = TV_ALERT_TEST_MESSAGES[alert.id] || [alert.nome, 'Notificação automática de teste.'];
+      await unlockTVAudio();
+      document.body.classList.remove('tv-config-open');
+      if (tvSettingsToggleBtn) tvSettingsToggleBtn.textContent = '⚙ Configurar TV';
+      tvSaleQueue.push({
+        nome: 'Vendedor de teste',
+        alertTitle: title,
+        alertMessage: `${message} · Esta é uma simulação.`,
+        valorVenda: 0,
+        quantidadeVenda: 0,
+        alertDuration: alert.duracao,
+        alertSound: alert.som
+      });
+      showNextTVSaleAnnouncement();
     }
 
     function readTVAlerts() {
@@ -13355,6 +13387,10 @@
       tvSceneEditorController?.reset(window.HengstTVPhase3.DEFAULT_SCENES);
       renderTVAlertEditor(window.HengstTVPhase3.DEFAULT_ALERTS);
       showToast('Configuração padrão restaurada', 'Clique em Atualizar transmissão para confirmar.');
+    });
+    tvAlertEditor?.addEventListener('click', event => {
+      const button = event.target.closest('[data-test-alert]');
+      if (button) testTVAlert(button.dataset.testAlert);
     });
     tvRestartBtn?.addEventListener('click', () => {
       tvPaused = false;
