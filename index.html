@@ -7719,10 +7719,34 @@
       max-width: 1500px;
       max-height: calc(100vh - 88px);
       margin: 0 auto;
-      overflow: auto;
+      overflow-x: hidden;
+      overflow-y: scroll;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+      touch-action: pan-y;
       border: 1px solid rgba(246,196,0,.34);
       background: rgba(12,16,24,.98);
       box-shadow: 0 30px 100px rgba(0,0,0,.8);
+    }
+
+    body.mode-tv.tv-config-open .tv-control-panel:focus-visible {
+      outline: 2px solid var(--yellow);
+      outline-offset: -2px;
+    }
+
+    body.mode-tv.tv-config-open .tv-control-panel::-webkit-scrollbar {
+      width: 12px;
+    }
+
+    body.mode-tv.tv-config-open .tv-control-panel::-webkit-scrollbar-track {
+      background: rgba(255,255,255,.045);
+      border-radius: 999px;
+    }
+
+    body.mode-tv.tv-config-open .tv-control-panel::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, var(--yellow), #9b7b00);
+      border: 3px solid rgba(12,16,24,.98);
+      border-radius: 999px;
     }
     body.mode-tv #tab-tv {
       display: block !important;
@@ -8926,7 +8950,7 @@
       <main class="tv-layout">
         <button class="secondary tv-menu-button" id="tvBackToMenuBtn" type="button">⌂ Menu principal</button>
         <button class="tv-settings-toggle" id="tvSettingsToggleBtn" type="button">⚙ Configurar TV</button>
-        <section class="card tv-control-panel">
+        <section class="card tv-control-panel" tabindex="0" aria-label="Configurações roláveis da TV Indoor">
           <div class="tv-control-head">
             <div>
               <span class="tv-control-kicker">📺 Exibição para TV Indoor</span>
