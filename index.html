@@ -208,6 +208,37 @@
       border-color: rgba(246, 196, 0, 0.4);
     }
 
+    .tab-group {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+      padding: 7px;
+      border: 1px solid rgba(255,255,255,.075);
+      border-radius: 15px;
+      background: rgba(255,255,255,.035);
+    }
+
+    .tab-group-label {
+      padding: 0 7px;
+      color: var(--muted);
+      font-size: .62rem;
+      font-weight: 950;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .tab-group-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tab-group .tab-btn {
+      min-height: 38px;
+      padding: 9px 12px;
+      font-size: .78rem;
+    }
+
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
@@ -2583,6 +2614,18 @@
       }
       .tabs {
         position: static;
+        width: 100%;
+      }
+      .tab-group {
+        width: 100%;
+      }
+      .tab-group-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+      .tab-group .tab-btn {
+        width: 100%;
+        justify-content: flex-start;
       }
       .table-head {
         position: static;
@@ -8165,13 +8208,28 @@
 
     <div class="global-progress" aria-hidden="true"><span id="globalProgressBar"></span></div>
 
-    <nav class="tabs" aria-label="Navegação do sistema">
-      <button class="tab-btn" data-tab="campaigns" type="button">Campanhas</button>
-      <button class="tab-btn active" data-tab="results" type="button">Resultados do Excel</button>
-      <button class="tab-btn" data-tab="ranking" type="button">Campanha de Vendas</button>
-      <button class="tab-btn" data-tab="history" type="button">Crescimento Hengst</button>
-      <button class="tab-btn" data-tab="analytics" type="button">Análises Gerenciais</button>
-      <button class="tab-btn" data-tab="network" type="button">Backup e JACSYS</button>
+    <nav class="tabs" aria-label="Navegação do sistema agrupada por finalidade">
+      <section class="tab-group" aria-labelledby="tabGroupManagement">
+        <span class="tab-group-label" id="tabGroupManagement">Gestão</span>
+        <div class="tab-group-actions">
+          <button class="tab-btn" data-tab="campaigns" type="button">Campanhas</button>
+          <button class="tab-btn active" data-tab="results" type="button">Resultados do Excel</button>
+        </div>
+      </section>
+      <section class="tab-group" aria-labelledby="tabGroupPerformance">
+        <span class="tab-group-label" id="tabGroupPerformance">Performance</span>
+        <div class="tab-group-actions">
+          <button class="tab-btn" data-tab="ranking" type="button">Campanha de Vendas</button>
+          <button class="tab-btn" data-tab="history" type="button">Crescimento Hengst</button>
+          <button class="tab-btn" data-tab="analytics" type="button">Análises Gerenciais</button>
+        </div>
+      </section>
+      <section class="tab-group" aria-labelledby="tabGroupSystem">
+        <span class="tab-group-label" id="tabGroupSystem">Sistema</span>
+        <div class="tab-group-actions">
+          <button class="tab-btn" data-tab="network" type="button">Backup e JACSYS</button>
+        </div>
+      </section>
     </nav>
 
     <section id="tab-campaigns" class="tab-panel">
@@ -10108,11 +10166,7 @@
       loadCampaignForm();
       setExportButtonsState(rawRows.length === 0);
       clearBtn.disabled = rawRows.length === 0;
-      render();
-      renderRanking();
-      renderHistory();
-      renderAnalytics();
-      renderTV();
+      renderActiveDataViews();
       if (previousTVRows.length) evaluateTVAutomaticAlerts(previousTVRows, getTVRows());
       updateSystemSummary();
       tvLastValidAt = cloudUpdatedAt || new Date().toISOString();
@@ -10333,7 +10387,7 @@
         rawRows.push(...jacsysValidatedResult.records.map(row => ({ ...row })));
         rawRowKeys = new Set(rawRows.map(makeRowKey));
         updateAllFilterOptions();
-        render(); renderRanking(); renderHistory(); renderAnalytics(); renderTV(); updateSystemSummary();
+        renderActiveDataViews(); updateSystemSummary();
         await saveCloudState();
         const durationMs = Math.round(performance.now() - startedAt);
         await recordNetworkHistory({
@@ -10351,7 +10405,7 @@
       } catch (error) {
         rawRows = previousRows;
         rawRowKeys = new Set(rawRows.map(makeRowKey));
-        render(); renderRanking(); renderHistory(); renderAnalytics(); renderTV(); updateSystemSummary();
+        renderActiveDataViews(); updateSystemSummary();
         await recordNetworkHistory({
           origin: 'JACSYS', recordCount: jacsysValidatedResult.summary.received,
           validCount: 0, discardedCount: jacsysValidatedResult.summary.received,
@@ -12028,6 +12082,20 @@
       }
     }
 
+    function getActiveTabName() {
+      const activePanel = [...tabPanels].find(panel => panel.classList.contains('active'));
+      return activePanel?.id?.replace(/^tab-/, '') || 'results';
+    }
+
+    function renderActiveDataViews() {
+      render();
+      const activeTab = getActiveTabName();
+      if (activeTab === 'ranking') renderRanking();
+      if (activeTab === 'history') renderHistory();
+      if (activeTab === 'analytics') renderAnalytics();
+      if (activeTab === 'tv' || isTVPresentationContext()) renderTV();
+    }
+
     async function handleFiles(files) {
       const validFiles = Array.from(files).filter(file => /\.(xlsx|xls|csv)$/i.test(file.name));
 
@@ -12089,7 +12157,7 @@
         rawRows = rowsBeforeImport;
         rawRowKeys = new Set(rawRows.map(makeRowKey));
         updateAllFilterOptions();
-        render(); renderRanking(); renderHistory(); renderAnalytics(); renderTV(); updateSystemSummary();
+        renderActiveDataViews(); updateSystemSummary();
         await recordNetworkHistory({
           origin: 'EXCEL_CSV', recordCount: validFiles.length, validCount: 0, discardedCount: validFiles.length,
           durationMs: Math.round(performance.now() - startedAt), result: 'error', message: error.message,
@@ -14503,9 +14571,6 @@
     setExportButtonsState(true);
     clearBtn.disabled = true;
     render();
-    renderRanking();
-    renderHistory();
-    renderAnalytics();
     setPerformanceMode(rawRows.length + historicalRows.length > 2500);
     updateSystemSummary();
     loadCloudState();
