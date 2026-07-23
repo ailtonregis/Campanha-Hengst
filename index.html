@@ -9270,6 +9270,7 @@
       setActiveTab(area === 'tv' ? 'tv' : 'results');
       history.replaceState(null, '', `${location.pathname}${location.search}${area === 'tv' ? '#indoor-tv' : '#administrativo'}`);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (area === 'tv') window.setTimeout(queueLatestTVSaleAnnouncement, 450);
     }
 
     previewLoginForm.addEventListener('submit', async event => {
@@ -9296,9 +9297,15 @@
         submitButton.textContent = 'Entrar na administração';
       }
     });
-    openPublicTvArea.addEventListener('click', () => openWorkspace('tv'));
+    openPublicTvArea.addEventListener('click', async () => {
+      await unlockTVAudio();
+      openWorkspace('tv');
+    });
     openAdminArea.addEventListener('click', () => openWorkspace('admin'));
-    openTvArea.addEventListener('click', () => openWorkspace('tv'));
+    openTvArea.addEventListener('click', async () => {
+      await unlockTVAudio();
+      openWorkspace('tv');
+    });
     backToStartBtn.addEventListener('click', showStartScreen);
 
     const fileInput = document.getElementById('fileInput');
@@ -9583,6 +9590,7 @@
     let tvSaleQueue = [];
     let tvSaleAnnouncementActive = false;
     let tvSaleAnnouncementTimer = null;
+    let tvLatestSaleInitialAlertShown = false;
     let tvAudioContext = null;
     let selectedBackupFile = null;
     let jacsysSimulationPayload = null;
@@ -9951,6 +9959,14 @@
       };
     }
 
+    function queueLatestTVSaleAnnouncement() {
+      if (tvLatestSaleInitialAlertShown || !isTVPresentationContext()) return;
+      const sale = getLastTVSaleForTest();
+      if (!sale) return;
+      tvLatestSaleInitialAlertShown = true;
+      queueTVSaleAnnouncements([{ ...sale, alertTitle: sale.nome, alertMessage: `Ultima venda registrada · ${sale.filial || 'Stärke Parts'} · ranking atualizado` }]);
+    }
+
     function getActiveCampaign() {
       return platformState ? StarkeCampaignPlatform.active(platformState) : null;
     }
@@ -10110,12 +10126,13 @@
         cloudStateExists = Boolean(result.exists || result.state);
         const hasCloudUpdate = result.state && result.updatedAt !== cloudUpdatedAt;
         if (hasCloudUpdate) {
-          const previousSales = quiet && cloudUpdatedAt && document.body.classList.contains('mode-tv')
+          const previousSales = quiet && cloudUpdatedAt && isTVPresentationContext()
             ? getTVSalesSnapshot(rawRows)
             : null;
           applyCloudState(result.state);
           cloudUpdatedAt = result.updatedAt || null;
           if (previousSales) queueTVSaleAnnouncements(findNewTVSales(previousSales, getTVSalesSnapshot(rawRows)));
+          else if (isTVPresentationContext()) queueLatestTVSaleAnnouncement();
           if (!quiet) addStatus('Dados compartilhados', 'Informações carregadas da nuvem para este computador.');
         }
         return true;
@@ -14462,11 +14479,11 @@
     updateSystemSummary();
     loadCloudState();
     window.setInterval(async () => {
-      if (!document.body.classList.contains('mode-tv') || cloudPollBusy) return;
+      if (!isTVPresentationContext() || cloudPollBusy) return;
       cloudPollBusy = true;
       try { await loadCloudState({ quiet: true }); }
       finally { cloudPollBusy = false; }
-    }, 60000);
+    }, 15000);
     if (location.pathname.replace(/\/+$/, '') === '/live' || location.hash === '#indoor-tv') openWorkspace('tv');
   </script>
 </body>
