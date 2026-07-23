@@ -9915,6 +9915,20 @@
       showNextTVSaleAnnouncement();
     }
 
+    function queueTVAutomaticSaleAnnouncements(sales) {
+      if (!Array.isArray(sales) || !sales.length) return;
+      const config = tvSettings.alerts?.find(alert => alert.id === 'last-sale');
+      if (!config?.ativo) return;
+      const last = Number(tvSettings.alertHistory?.['last-sale'] || 0);
+      if (Date.now() - last < Number(config.intervaloMinimo || 30) * 1000) return;
+      tvSettings.alertHistory = { ...(tvSettings.alertHistory || {}), 'last-sale': Date.now() };
+      queueTVSaleAnnouncements(sales.map(sale => ({
+        ...sale,
+        alertDuration: config.duracao,
+        alertSound: config.som
+      })));
+    }
+
     function queueTVAutomaticAlert(alertId, title, message, seller = '') {
       const config = tvSettings.alerts?.find(alert => alert.id === alertId && alert.ativo);
       if (!config) return;
@@ -9964,7 +9978,7 @@
       const sale = getLastTVSaleForTest();
       if (!sale) return;
       tvLatestSaleInitialAlertShown = true;
-      queueTVSaleAnnouncements([{ ...sale, alertTitle: sale.nome, alertMessage: `Ultima venda registrada · ${sale.filial || 'Stärke Parts'} · ranking atualizado` }]);
+      queueTVAutomaticSaleAnnouncements([{ ...sale, alertTitle: sale.nome, alertMessage: `Ultima venda registrada · ${sale.filial || 'Stärke Parts'} · ranking atualizado` }]);
     }
 
     function getActiveCampaign() {
@@ -10131,7 +10145,7 @@
             : null;
           applyCloudState(result.state);
           cloudUpdatedAt = result.updatedAt || null;
-          if (previousSales) queueTVSaleAnnouncements(findNewTVSales(previousSales, getTVSalesSnapshot(rawRows)));
+          if (previousSales) queueTVAutomaticSaleAnnouncements(findNewTVSales(previousSales, getTVSalesSnapshot(rawRows)));
           else if (isTVPresentationContext()) queueLatestTVSaleAnnouncement();
           if (!quiet) addStatus('Dados compartilhados', 'Informações carregadas da nuvem para este computador.');
         }
@@ -11110,6 +11124,7 @@
     }
 
     const TV_ALERT_TEST_MESSAGES = {
+      'last-sale': ['Última venda registrada', 'A venda mais recente foi recebida e o ranking será atualizado.'],
       'new-leader': ['Novo líder da campanha', 'Vendedor de teste assumiu a 1ª posição.'],
       'podium-change': ['Pódio atualizado', 'A classificação do TOP 3 foi alterada.'],
       'top-3': ['Entrada no TOP 3', 'Vendedor de teste entrou na zona de pódio.'],
@@ -11128,6 +11143,22 @@
       await unlockTVAudio();
       document.body.classList.remove('tv-config-open');
       if (tvSettingsToggleBtn) tvSettingsToggleBtn.textContent = '⚙ Configurar TV';
+      if (alert.id === 'last-sale') {
+        const sale = getLastTVSaleForTest();
+        if (!sale) {
+          showToast('Nenhuma venda disponível', 'Não foi encontrada uma última venda para testar a notificação.');
+          return;
+        }
+        tvSaleQueue.push({
+          ...sale,
+          alertTitle: sale.nome,
+          alertMessage: `Última venda registrada · ${sale.filial || 'Stärke Parts'} · Esta é uma simulação.`,
+          alertDuration: alert.duracao,
+          alertSound: alert.som
+        });
+        showNextTVSaleAnnouncement();
+        return;
+      }
       tvSaleQueue.push({
         nome: 'Vendedor de teste',
         alertTitle: title,
